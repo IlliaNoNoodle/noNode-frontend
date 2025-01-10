@@ -1,231 +1,139 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  Image,
-  useColorScheme,
+  Dimensions,
 } from "react-native";
-import { CheckBox } from "@/components";
+import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
+import { WaveForm } from "@/components";
 
-const ProfileScreen = () => {
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === "dark";
-  const styles = getStyles(isDarkMode);
+const ScreenWidth = Dimensions.get("window").width;
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
+export default function RecordAudioScreen() {
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+
+  async function startRecording() {
+    try {
+      // Перевірка на активний запис
+      if (recording) {
+        alert("Запис вже активний. Спочатку зупиніть його.");
+        return;
+      }
+      await Audio.requestPermissionsAsync(); // Запит дозволів
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+      console.log("Запис розпочато");
+    } catch (err) {
+      console.error("Помилка під час запису:", err);
+    }
+  }
+
+  async function stopRecording() {
+    try {
+      alert("Зупиняємо запис...");
+      if (recording) {
+        await recording.stopAndUnloadAsync();
+        const uri = recording.getURI(); // Отримуємо URI записаного файлу
+        console.log("Запис збережено за адресою:", uri);
+        setRecording(null);
+      } else {
+        console.warn("Немає активного запису для зупинки.");
+      }
+    } catch (err) {
+      console.error("Помилка при зупинці запису:", err);
+    }
+  }
 
   return (
     <View style={styles.container}>
-      {/* Logo Section */}
-      <View style={styles.logoContainer}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>Logo</Text>
-        </View>
-        <Text style={styles.title}>Welcome to X</Text>
+      <Text style={styles.title}>Record Audio</Text>
+
+      <View style={styles.waveformContainer}>
+        <Text style={styles.timestamp}>00:02</Text>
+        <WaveForm isRecording={recording} />
+        <Text style={styles.timestamp}>00:04</Text>
       </View>
 
-      {/* Google Sign-In */}
-      <TouchableOpacity style={styles.googleButton}>
-        <Image
-          source={{
-            uri: "https://kgo.googleusercontent.com/profile_vrt_raw_bytes_1587515358_10512.png",
-          }}
-          style={styles.googleIcon}
-        />
-        <Text style={styles.googleButtonText}>Sign in with Google</Text>
-      </TouchableOpacity>
-
-      {/* Divider */}
-      <View style={styles.dividerContainer}>
-        <View style={styles.divider} />
-        <Text style={styles.dividerText}>OR</Text>
-        <View style={styles.divider} />
+      <View style={styles.btnRow}>
+        <TouchableOpacity
+          style={styles.toggleButton}
+          onPress={() => console.log("Play pressed")}
+        >
+          <Ionicons name="play-circle" size={30} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.recordButton} onPress={startRecording}>
+          <Ionicons name="mic" size={36} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.toggleButton} onPress={stopRecording}>
+          <Ionicons name="stop" size={30} color="white" />
+        </TouchableOpacity>
       </View>
-
-      {/* Email and Password Inputs */}
-      <View style={styles.inputContainer}>
-        {/* Email Input */}
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your email"
-          placeholderTextColor="#B0BEC5"
-        />
-
-        {/* Password Input */}
-        <Text style={styles.label}>Password</Text>
-        <View>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your password"
-            placeholderTextColor="#B0BEC5"
-            secureTextEntry={!showPassword}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Image
-              source={{
-                uri: "https://upload.wikimedia.org/wikipedia/commons/d/d7/Eye_Icon.svg",
-              }}
-              style={styles.eyeIcon}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Terms and Conditions */}
-      <View style={styles.checkboxContainer}>
-        <CheckBox
-          label="I accepted all Terms and Conditions."
-          checked={isChecked}
-          onToggle={() => {setIsChecked(!isChecked)}}
-        />
-      </View>
-
-      {/* Sign-In Button */}
-      <TouchableOpacity style={styles.signInButton}>
-        <Text style={styles.signInButtonText}>Sign in</Text>
-      </TouchableOpacity>
-
-      {/* Footer */}
-      <Text style={styles.footerText}>
-        Already have an account? <Text style={styles.footerLink}>Sign in</Text>
-      </Text>
     </View>
   );
-};
+}
 
-const getStyles = (isDarkMode: boolean) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDarkMode ? "#1C1C1E" : "#FFFFFF",
-      padding: 20,
-      paddingTop: 64,
-      justifyContent: "center",
-    },
-    logoContainer: {
-      alignItems: "center",
-    },
-    logo: {
-      width: 120,
-      height: 120,
-      borderRadius: 100,
-      backgroundColor: "#E0E0E0",
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    logoText: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: "#000000",
-    },
-    title: {
-      fontSize: 20,
-      fontWeight: "600",
-      marginTop: 15,
-      marginBottom: 42,
-    },
-    googleButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: "#FFFFFF",
-      borderWidth: 1,
-      borderColor: "#E0E0E0",
-      paddingVertical: 15,
-      paddingHorizontal: 0,
-      borderRadius: 10,
-      marginBottom: 20,
-      justifyContent: "center",
-      gap: 12,
-      textAlign: "center",
-    },
-    googleIcon: {
-      width: 20,
-      height: 20,
-      // marginRight: 10,
-    },
-    googleButtonText: {
-      fontSize: 16,
-      color: "#000000",
-    },
-    dividerContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginVertical: 20,
-    },
-    divider: {
-      flex: 1,
-      height: 1,
-      backgroundColor: "#E0E0E0",
-    },
-    dividerText: {
-      marginHorizontal: 10,
-      color: "#92939E",
-    },
-    inputContainer: {
-      marginBottom: 20,
-
-    },
-    label: {
-      fontSize: 14,
-      fontWeight: "500",
-      color: "#92939E",
-      marginBottom: 5,
-    },
-    input: {
-      // backgroundColor: "#F7F7F7",
-      borderWidth: 1,
-      borderColor: "#E0E0E0",
-      padding: 15,
-      borderRadius: 8,
-      fontSize: 16,
-      color: "#222332",
-      marginBottom: 15,
-    },
-    eyeIcon: {
-      width: 20,
-      height: 20,
-      tintColor: "#92939E",
-      position: "absolute",
-      right: 10,
-    },
-    checkboxContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 20,
-    },
-    checkbox: {
-      marginRight: 10,
-    },
-    checkboxText: {
-      fontSize: 14,
-      color: "#92939E",
-    },
-    signInButton: {
-      backgroundColor: "#4A90E2",
-      padding: 15,
-      borderRadius: 8,
-      alignItems: "center",
-      marginBottom: 20,
-    },
-    signInButtonText: {
-      color: "#FFFFFF",
-      fontSize: 16,
-      fontWeight: "600",
-    },
-    footerText: {
-      textAlign: "center",
-      fontSize: 14,
-      color: "#92939E",
-    },
-    footerLink: {
-      color: "#4A90E2",
-      fontWeight: "600",
-    },
-  });
-
-export default ProfileScreen;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F8F9FA",
+    alignItems: "center",
+    paddingTop: 50,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#2C2C2C",
+    marginBottom: 20,
+  },
+  waveformContainer: {
+    width: "90%",
+    alignItems: "center",
+    marginBottom: 40,
+  },
+  waveform: {
+    width: ScreenWidth * 0.8,
+    height: 100,
+    backgroundColor: "#D3D3D3",
+    borderRadius: 10,
+    marginVertical: 10,
+  },
+  timestamp: {
+    fontSize: 14,
+    color: "#6C6C6C",
+  },
+  btnRow: {
+    flexDirection: "row",
+    gap: 30,
+    alignItems: "center",
+  },
+  recordButton: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#4C84FF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#4C84FF",
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  toggleButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 50,
+    backgroundColor: "#4C84FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});

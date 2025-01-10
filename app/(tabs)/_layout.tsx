@@ -1,59 +1,56 @@
-import React from "react";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { Link, Tabs } from "expo-router";
-import { Pressable } from "react-native";
+import { Tabs } from 'expo-router';
+import React, { useState } from 'react';
+import { Platform, useColorScheme } from 'react-native';
 
-import Colors from "@/constants/Colors";
-import { useColorScheme } from "@/components/useColorScheme";
-import { useClientOnlyValue } from "@/components/useClientOnlyValue";
+import ProfileScreen from '../screens/registration';
+import Colors from '@/constants/Colors';
+import { IconSymbol } from '@/components';
 
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>["name"];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const [isAuthenticated, setIsAuthenticated] = useState(true); // Manage authentication state
+
+  if (!isAuthenticated) {
+    return <ProfileScreen onSignIn={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        headerShown: false,
+        tabBarStyle: Platform.select({
+          ios: {
+            position: 'absolute', // Transparent background for iOS
+          },
+          default: {},
+        }),
       }}
     >
+      {/* Home Screen */}
       <Tabs.Screen
         name="index"
         options={{
-          title: "Tab One",
-          headerShown: false,
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? "light"].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          title: 'Home',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="mic-outline" color={color} />,
         }}
       />
+      {/* Files Screen */}
       <Tabs.Screen
-        name="two"
+        name="files"
         options={{
-          title: "Tab Two",
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Files',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="folder-outline" color={color} />,
+        }}
+      />
+      {/* Settings Screen */}
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="settings-outline" color={color} />,
         }}
       />
     </Tabs>
