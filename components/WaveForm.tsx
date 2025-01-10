@@ -3,7 +3,7 @@ import { View, StyleSheet, Dimensions } from 'react-native';
 
 const ScreenWidth = Dimensions.get('window').width;
 
-export function WaveForm({ isRecording, barCount = 30, updateInterval = 200 }: { isRecording: boolean, barCount?: number, updateInterval?: number }) {
+export function WaveForm({ isRecording, barCount = 30, updateInterval = 50 }: { isRecording: boolean, barCount?: number, updateInterval?: number }) {
   const [waveformData, setWaveformData] = useState<number[]>(
     Array(barCount).fill(10) // Default height for bars
   );

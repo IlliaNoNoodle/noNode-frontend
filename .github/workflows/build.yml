@@ -37,6 +37,8 @@ jobs:
 
       # Ensure the project is linked to an EAS account
       - name: Link EAS Project
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           if [ ! -f ".eas.json" ]; then
             eas init --non-interactive
@@ -44,6 +46,6 @@ jobs:
 
       # Build the app with EAS
       - name: Build app
-        run: eas build --platform all --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build --platform android  
