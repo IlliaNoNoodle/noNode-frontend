@@ -6,27 +6,38 @@ import {
   StyleSheet,
   Dimensions,
 } from "react-native";
+
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { WaveForm } from "@/components";
+import * as FileSystem from "expo-file-system";
+import { useAtom } from "jotai";
+import { audios } from "../store";
 
 const ScreenWidth = Dimensions.get("window").width;
 
 export default function RecordAudioScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [allAudios, setAllAudios] = useAtom(audios);
+  const [duration, setDuration] = useState(0)
+
+  function toggleRecording() {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }
 
   async function startRecording() {
     try {
-      // Перевірка на активний запис
-      if (recording) {
-        alert("Запис вже активний. Спочатку зупиніть його.");
-        return;
-      }
       await Audio.requestPermissionsAsync(); // Запит дозволів
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
+      setIsRecording(true);
 
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
@@ -40,12 +51,23 @@ export default function RecordAudioScreen() {
 
   async function stopRecording() {
     try {
-      alert("Зупиняємо запис...");
       if (recording) {
         await recording.stopAndUnloadAsync();
         const uri = recording.getURI(); // Отримуємо URI записаного файлу
-        console.log("Запис збережено за адресою:", uri);
+        alert(uri);
         setRecording(null);
+        setIsRecording(false);
+        const currentDate = new Date
+        setAllAudios([
+          ...allAudios, 
+          { 
+            name: `audio number ${allAudios.length + 1}`,
+            date: `${currentDate.getDate()}.${currentDate.getMonth()}.${currentDate.getFullYear()}`,
+            id: allAudios.length + 1,
+            duration: duration,
+            uri: `${uri}`, 
+          }
+        ])
       } else {
         console.warn("Немає активного запису для зупинки.");
       }
@@ -54,29 +76,44 @@ export default function RecordAudioScreen() {
     }
   }
 
+  async function cancelRecording() {
+    try {
+      if (recording) {
+        await recording.stopAndUnloadAsync();
+        const uri: any = recording.getURI();
+        await FileSystem.deleteAsync(uri)
+        setRecording(null)
+        setIsRecording(false)
+      }
+    } catch(error) {
+      console.error(error)
+    }
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Record Audio</Text>
-
       <View style={styles.waveformContainer}>
-        <Text style={styles.timestamp}>00:02</Text>
-        <WaveForm isRecording={recording} />
-        <Text style={styles.timestamp}>00:04</Text>
+        <WaveForm isRecording={isRecording} recording={recording} onDurationUpdate={(newDuration) => {setDuration(newDuration)}}/>
       </View>
 
       <View style={styles.btnRow}>
-        <TouchableOpacity
-          style={styles.toggleButton}
-          onPress={() => console.log("Play pressed")}
-        >
-          <Ionicons name="play-circle" size={30} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.recordButton} onPress={startRecording}>
+        {isRecording && (
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={stopRecording}
+          >
+            <Ionicons name="checkmark" size={30} color="white" />
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={styles.recordButton} onPress={toggleRecording}>
           <Ionicons name="mic" size={36} color="white" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.toggleButton} onPress={stopRecording}>
-          <Ionicons name="stop" size={30} color="white" />
-        </TouchableOpacity>
+        {isRecording && (
+          <TouchableOpacity style={styles.deleteButton} onPress={cancelRecording}>
+            <Ionicons name="close" size={30} color="white" />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -128,11 +165,19 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
   },
-  toggleButton: {
-    width: 70,
-    height: 70,
+  saveButton: {
+    width: 60,
+    height: 60,
     borderRadius: 50,
-    backgroundColor: "#4C84FF",
+    backgroundColor: "#17A6324F",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 50,
+    backgroundColor: "#E946464F",
     justifyContent: "center",
     alignItems: "center",
   },
