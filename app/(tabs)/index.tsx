@@ -21,6 +21,7 @@ export default function RecordAudioScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [allAudios, setAllAudios] = useAtom(audios);
   const [duration, setDuration] = useState(0)
+  const [amountOfParticipants, setAmountOfParticapants] = useState(0)
 
   function toggleRecording() {
     if (isRecording) {
@@ -65,7 +66,8 @@ export default function RecordAudioScreen() {
             date: `${currentDate.getDate()}.${currentDate.getMonth()}.${currentDate.getFullYear()}`,
             id: allAudios.length + 1,
             duration: duration,
-            uri: `${uri}`, 
+            uri: `${uri}`,
+            amountOfParticipants: amountOfParticipants
           }
         ])
       } else {
@@ -96,6 +98,22 @@ export default function RecordAudioScreen() {
       <View style={styles.waveformContainer}>
         <WaveForm isRecording={isRecording} recording={recording} onDurationUpdate={(newDuration) => {setDuration(newDuration)}}/>
       </View>
+      {!isRecording &&
+      <View style={styles.amountContainer}>
+        <Text style={styles.amountContainerTitle}>Number of participants</Text>
+        <View style={styles.numberOfParticipants}>
+        <TouchableOpacity disabled={amountOfParticipants === 0} onPress={() => setAmountOfParticapants(amountOfParticipants - 1)} style={styles.setParticipantsButton}>
+          <Text style={styles.participantsButtonText}>-</Text>
+        </TouchableOpacity>
+        <View>
+          <Text style={styles.participantsButtonText}>{amountOfParticipants}</Text>
+        </View>
+        <TouchableOpacity disabled={amountOfParticipants === 10} onPress={() => setAmountOfParticapants(amountOfParticipants + 1)} style={styles.setParticipantsButton}>
+          <Text style={styles.participantsButtonText}>+</Text>
+        </TouchableOpacity>
+        </View>
+      </View>
+      } 
 
       <View style={styles.btnRow}>
         {isRecording && (
@@ -124,18 +142,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8F9FA",
     alignItems: "center",
-    paddingTop: 50,
+    paddingTop: 80,
+    width: "100%",
+    paddingHorizontal: 30, 
   },
   title: {
     fontSize: 24,
     fontWeight: "600",
     color: "#2C2C2C",
-    marginBottom: 20,
+    marginBottom: 30,
+    width: "100%",
   },
   waveformContainer: {
-    width: "90%",
+    width: "100%",
     alignItems: "center",
-    marginBottom: 40,
   },
   waveform: {
     width: ScreenWidth * 0.8,
@@ -148,7 +168,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6C6C6C",
   },
+  amountContainer: {
+    marginTop: 50
+  },
+  amountContainerTitle: {
+    textAlign: "center",
+    marginBottom: 12
+  },
+  numberOfParticipants: {
+    flexDirection: "row",
+    padding: 16,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: "#D2DAFF",
+    borderRadius: 100,
+  },
+  setParticipantsButton: {
+    paddingHorizontal: 16,
+  },
+  participantsButtonText: {
+    fontSize: 20
+  },
+
   btnRow: {
+    marginTop: 50,
     flexDirection: "row",
     gap: 30,
     alignItems: "center",

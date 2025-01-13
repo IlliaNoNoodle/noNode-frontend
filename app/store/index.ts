@@ -6,6 +6,7 @@ export interface audio {
     id: number
     duration: number
     uri: string
+    amountOfParticipants: number
 }
 
 export const audios = atom<audio[]>([])

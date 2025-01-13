@@ -15,7 +15,7 @@ interface WaveformProps {
 export const WaveForm: React.FC<WaveformProps> = ({
   isRecording,
   recording,
-  barCount = 35,
+  barCount = 48,
   updateInterval = 100,
   onDurationUpdate,
 }) => {
@@ -32,7 +32,7 @@ export const WaveForm: React.FC<WaveformProps> = ({
           const amplitude = Math.max(0, Math.abs(status.metering));
           setWaveformData((prev) => [
             ...prev.slice(-barCount),
-            Math.min(amplitude * 2, 50),
+            Math.min(amplitude * 2, 100),
           ]);
         } else {
           setWaveformData((prev) => [...prev.slice(-barCount), 10]);
@@ -105,15 +105,15 @@ const styles = StyleSheet.create({
   timerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '90%',
+    width: '100%',
     marginBottom: 10,
   },
   waveformContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 100,
-    width: ScreenWidth * 0.8,
+    height: 250,
+    width: ScreenWidth,
     backgroundColor: '#E6E6E6',
     borderRadius: 10,
     overflow: 'hidden',

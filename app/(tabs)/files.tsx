@@ -18,6 +18,7 @@ interface AudioItem {
   duration: number;
   id: number;
   uri: string;
+  amountOfParticipants: number
 }
 
 const AnalysisLibraryScreen = () => {
@@ -101,7 +102,7 @@ const AnalysisLibraryScreen = () => {
         <Icon name="ellipsis-vertical" size={20} color="white" onPress={() => {deleteAudio(item)}}/>
       </View>
       <Text style={styles.recordingDetails}>
-        {item.date} | 
+        {item.date} | {item.amountOfParticipants}
       </Text>
       <View style={styles.waveformContainer}>
         <Text style={styles.recordingDuration}>{formatTime(Math.floor(item.duration))}</Text>

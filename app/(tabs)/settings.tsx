@@ -7,6 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from 'expo-router';
 
 type Option = {
   id: string;
@@ -26,19 +27,23 @@ const initialSettingsData: Section[] = [
     options: [
       { id: '1', title: 'Title', description: 'Lorem ipsum dolor sit amet', checked: false },
       { id: '2', title: 'Title', description: 'Lorem ipsum dolor sit amet', checked: true },
+      { id: '3', title: 'Title', description: 'Lorem ipsum dolor sit amet', checked: true },
     ],
   },
   {
     section: 'Advanced',
     options: [
-      { id: '3', title: 'Title', description: 'Lorem ipsum dolor sit amet', checked: false },
-      { id: '4', title: 'Title', description: 'Lorem ipsum dolor sit amet', checked: true },
-      { id: '5', title: 'Title', description: 'Lorem ipsum dolor sit amet', checked: false },
+      { id: '4', title: 'Title', description: 'Lorem ipsum dolor sit amet', checked: false },
+      { id: '5', title: 'Title', description: 'Lorem ipsum dolor sit amet', checked: true },
+      { id: '6', title: 'Title', description: 'Lorem ipsum dolor sit amet', checked: false },
     ],
   },
 ];
 
 const SettingsScreen: React.FC = () => {
+
+  const navigation = useNavigation()
+
   const [settings, setSettings] = useState<Section[]>(initialSettingsData);
 
   const toggleCheckbox = (sectionIndex: number, optionIndex: number) => {
@@ -84,6 +89,9 @@ const SettingsScreen: React.FC = () => {
         {/* Buttons */}
         <View style={styles.buttonsContainer}>
           <TouchableOpacity style={styles.signOutButton}>
+            <Text style={styles.signOutText}>Buy Full Version</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.signOutButton}>
             <Text style={styles.signOutText}>Sign out</Text>
           </TouchableOpacity>
           <TouchableOpacity>
@@ -101,16 +109,15 @@ const styles = StyleSheet.create({
     gap: 0,
     backgroundColor: '#f9f9f9',
     paddingHorizontal: 16,
-    paddingTop: 25,
+    paddingTop: 30,
   },
   header: {
     marginTop: 40,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    textAlign: 'center',
   },
   settingsContainer: {
     paddingBottom: 20,
@@ -121,14 +128,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4A90E2',
+    color: '#4F6DFF',
     marginBottom: 12,
   },
   option: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
     paddingVertical: 8,
   },
   optionDetails: {
