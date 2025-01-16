@@ -9,33 +9,29 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { AudioItem, audios, filteredAudiosAtom } from '../store';
+import { audios } from '../store';
 import { Audio, AVPlaybackStatus } from 'expo-av';
-import { LinearGradient } from 'expo-linear-gradient';
-import { SortOptions } from '../../components/SortOptions';
-import { router } from 'expo-router';
 
+interface AudioItem {
+  name: string;
+  date: string;
+  duration: number;
+  id: number;
+  uri: string;
+  amountOfParticipants: number
+}
 
 const AnalysisLibraryScreen = () => {
-  const [allAudios, setAllAudios] = useAtom(audios);
-  const [filteredAudios, setFilteredAudios] = useAtom(filteredAudiosAtom);
+  const [allAudios, setAllAudios] = useAtom<AudioItem[]>(audios);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isSoundPlaying, setIsPlayingSound] = useState(false);
-  const [isEnded, setIsEnded] = useState(true);
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [showSortOptions, setShowSortOptions] = useState(false);
+  const [isSoundPlaying, setIsPlayingSound] = useState(false)
+  const [isEnded, setIsEnded] = useState(true)
   const soundRef = useRef<Audio.Sound | null>(null);
-  const [playingId, setPlayingId] = useState<number | null>(null);
-
-
-  useEffect(() => {
-    setFilteredAudios(allAudios);
-  }, [allAudios, setFilteredAudios]);
 
   useEffect(() => {
     return sound
       ? () => {
-          sound.unloadAsync();
+          sound.unloadAsync(); // Очищення ресурсу при розмонтуванні компонента
         }
       : undefined;
   }, [sound]);
@@ -51,32 +47,27 @@ const AnalysisLibraryScreen = () => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handlePlayPress = async (uri: string, id: number) => {
+  const handlePlayPress = async (uri: string) => {
     try {
-      if (playingId === id && isSoundPlaying) {
+      if (isSoundPlaying) {
         await soundRef.current?.pauseAsync();
         setIsPlayingSound(false);
         return;
       }
 
-      if (soundRef.current && playingId !== id) {
-        await unloadSound();
-      }
-
       if (soundRef.current === null) {
+
         const { sound } = await Audio.Sound.createAsync(
           { uri },
           { shouldPlay: true }
         );
         soundRef.current = sound;
-        setPlayingId(id);
 
         sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
           if (status.isLoaded) {
             setIsPlayingSound(status.isPlaying);
             if (status.didJustFinish) {
               unloadSound();
-              setPlayingId(null);
             }
           } else {
             setIsPlayingSound(false);
@@ -85,10 +76,9 @@ const AnalysisLibraryScreen = () => {
       } else {
         await soundRef.current.playAsync();
         setIsPlayingSound(true);
-        setPlayingId(id);
       }
     } catch (error) {
-      console.error('Error playing audio', error);
+      console.error('Помилка при відтворенні аудіо', error);
     }
   };
 
@@ -106,53 +96,21 @@ const AnalysisLibraryScreen = () => {
 
 
   const renderRecording = ({ item }: { item: AudioItem }) => (
-    <TouchableOpacity 
-      onPress={() => router.push(`/screens/audio/${item.id}`)}
-    >
-      <LinearGradient
-        colors={['#4F6DFF', '#C0CBFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.recordingCard}
-      >
-        <View key={item.id} style={styles.recordingCard}>
-          <View style={styles.recordingHeader}>
-            <Text style={styles.recordingName}>{item.name}</Text>
-            <Icon name="ellipsis-vertical" size={22} color="white" onPress={() => {setActiveIndex(activeIndex === item.id ? null : item.id);}}/>
-            {activeIndex === item.id &&
-            <View key={item.id} style={styles.dropdown}>
-              <TouchableOpacity style={styles.dropdownItem}>
-                <Icon name='share-social-outline' size={20}/>
-                <Text>Share</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem}>
-                <Icon name='pencil-outline' size={20}/>
-                <Text>Rename</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => {deleteAudio(item)}}>
-                <Icon name='trash-outline' size={20}/>
-                <Text>Delete</Text>
-              </TouchableOpacity>
-            </View>
-            }
-          </View>
-          <Text style={styles.recordingDetails}>
-            {item.date} | {item.amountOfParticipants}
-          </Text>
-          <View style={styles.waveformContainer}>
-            <Text style={styles.recordingDuration}>{formatTime(Math.floor(item.duration))}</Text>
-            <TouchableOpacity>
-              <Icon 
-                onPress={() => handlePlayPress(item.uri, item.id)} 
-                name={isSoundPlaying && playingId === item.id ? "pause-circle" : "play-circle"} 
-                size={30} 
-                color="white" 
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
+    <View style={styles.recordingCard}>
+      <View style={styles.recordingHeader}>
+        <Text style={styles.recordingName}>{item.name}</Text>
+        <Icon name="ellipsis-vertical" size={20} color="white" onPress={() => {deleteAudio(item)}}/>
+      </View>
+      <Text style={styles.recordingDetails}>
+        {item.date} | {item.amountOfParticipants}
+      </Text>
+      <View style={styles.waveformContainer}>
+        <Text style={styles.recordingDuration}>{formatTime(Math.floor(item.duration))}</Text>
+        <TouchableOpacity>
+          <Icon onPress={() => handlePlayPress(item.uri)} name={isSoundPlaying ? "pause-circle" : "play-circle"} size={30} color="white" />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 
   return (
@@ -174,17 +132,16 @@ const AnalysisLibraryScreen = () => {
         </View>
         <View style={styles.sortContainer}>
           <Text style={styles.recordsCount}>{allAudios.length} records</Text>
-          <TouchableOpacity onPress={() => setShowSortOptions(!showSortOptions)} style={styles.sortButton}>
+          <TouchableOpacity style={styles.sortButton}>
             <Icon name="funnel-outline" size={20} color="gray" />
             <Text style={styles.sortText}>Sort by</Text>
           </TouchableOpacity>
         </View>
-        {showSortOptions && <SortOptions allAudios={allAudios} setFilteredAudios={setFilteredAudios} filteredAudios={filteredAudios}/>}
       </View>
 
       {/* Recordings List */}
       <FlatList
-        data={filteredAudios}
+        data={allAudios}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderRecording}
         contentContainerStyle={styles.recordingsList}
@@ -252,14 +209,11 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   recordingCard: {
-    borderRadius: 16,
-    marginBottom: 12,
+    backgroundColor: '#6ba7ff',
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 16,
     elevation: 3,
-    shadowColor: '#4F6DFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    padding: 8,
   },
   recordingHeader: {
     flexDirection: 'row',
@@ -272,7 +226,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
   },
-  
   recordingDetails: {
     fontSize: 14,
     color: 'white',
@@ -285,26 +238,9 @@ const styles = StyleSheet.create({
   },
   recordingDuration: {
     fontSize: 16,
-    alignSelf: 'center',
     color: 'white',
     fontWeight: 'bold',
   },
-  dropdown: {
-    position: "absolute",
-    top: 30,
-    right: 0,
-    backgroundColor: "white",
-    paddingVertical: 4,
-    borderRadius: 8,
-    zIndex: 100,
-  },
-  dropdownItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "center",
-  }
 });
 
 export default AnalysisLibraryScreen;

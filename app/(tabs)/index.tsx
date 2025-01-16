@@ -1,304 +1,138 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  ScrollView,
-  Alert,
 } from "react-native";
+
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { WaveForm } from "@/components";
 import * as FileSystem from "expo-file-system";
-import { useAtom } from 'jotai';
-import { audios, checkAuthAtom, isAuthenticatedAtom } from '../store';
-import TranscriptionResult, { TranscriptionResult as TranscriptionResultType } from '@/components/TranscriptionResult';
-import { uploadAudioToAssemblyAI, getTranscriptionResult } from '@/services/assemblyAI';
-import SaveRecordingModal from "@/components/SaveRecordingModal";
-import { useRouter } from 'expo-router'; 
+import { useAtom } from "jotai";
+import { audios } from "../store";
 
 const ScreenWidth = Dimensions.get("window").width;
 
-interface ExtendedRecording extends Audio.Recording {
-  _uri: string;
-  transcription?: {
-    text: string | null;
-    status: string;
-    utterances?: Array<{
-      speaker: string;
-      text: string;
-    }>;
-  };
-}
-
 export default function RecordAudioScreen() {
-  const [allAudios, setAllAudios] = useAtom(audios);
-  const [recording, setRecording] = useState<ExtendedRecording | null>(null);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [amountOfParticipants, setAmountOfParticapants] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const [recordedUri, setRecordedUri] = useState<string | null>(null);
-  const [transcription, setTranscription] = useState<TranscriptionResultType | null>(null);
-  const [status, setStatus] = useState<string>('Initializing');
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [recordingName, setRecordingName] = useState('');
-  const [, checkAuth] = useAtom(checkAuthAtom); 
-  const [isAuthenticated, setIsAuthenticated] = useAtom(isAuthenticatedAtom);
-  const router = useRouter();
+  const [allAudios, setAllAudios] = useAtom(audios);
+  const [duration, setDuration] = useState(0)
+  const [amountOfParticipants, setAmountOfParticapants] = useState(0)
 
-
-  const startRecording = async () => {
-    await checkAuth(); 
-
-    if (!isAuthenticated) {
-      Alert.alert(
-        'Authentication Required',
-        'You must be logged in to record audio.'
-      );
-      router.push('/screens/registration'); 
-      return;
+  function toggleRecording() {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
+  }
 
+  async function startRecording() {
     try {
-      await Audio.requestPermissionsAsync();
+      await Audio.requestPermissionsAsync(); // Запит дозволів
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
-
       setIsRecording(true);
 
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
-      setRecording(recording as ExtendedRecording);
+      setRecording(recording);
+      console.log("Запис розпочато");
     } catch (err) {
-      console.error('Error starting recording:', err);
+      console.error("Помилка під час запису:", err);
     }
-  };
+  }
 
   async function stopRecording() {
     try {
       if (recording) {
         await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
+        const uri = recording.getURI(); // Отримуємо URI записаного файлу
+        alert(uri);
         setRecording(null);
-        setRecordedUri(uri);
         setIsRecording(false);
+        const currentDate = new Date
+        setAllAudios([
+          ...allAudios, 
+          { 
+            name: `audio number ${allAudios.length + 1}`,
+            date: `${currentDate.getDate()}.${currentDate.getMonth()}.${currentDate.getFullYear()}`,
+            id: allAudios.length + 1,
+            duration: duration,
+            uri: `${uri}`,
+            amountOfParticipants: amountOfParticipants
+          }
+        ])
+      } else {
+        console.warn("Немає активного запису для зупинки.");
       }
     } catch (err) {
-      console.error("Error stopping recording:", err);
+      console.error("Помилка при зупинці запису:", err);
     }
   }
 
-  async function playRecording() {
+  async function cancelRecording() {
     try {
-      if (isPlaying) {
-        await soundRef.current?.pauseAsync();
-        setIsPlaying(false);
-        return;
+      if (recording) {
+        await recording.stopAndUnloadAsync();
+        const uri: any = recording.getURI();
+        await FileSystem.deleteAsync(uri)
+        setRecording(null)
+        setIsRecording(false)
       }
-
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-      }
-
-      if (!recordedUri) {
-        throw new Error("No recording URI available");
-      }
-
-      const { sound } = await Audio.Sound.createAsync({ uri: recordedUri });
-      soundRef.current = sound;
-      setIsPlaying(true);
-
-      await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setIsPlaying(false);
-          sound.unloadAsync();
-        }
-      });
-    } catch (error) {
-      console.error("Playback Error:", error);
-      Alert.alert("Playback Error", "Failed to play recording.");
+    } catch(error) {
+      console.error(error)
     }
   }
-
-  async function deleteRecording() {
-    try {
-      if (recordedUri) {
-        await FileSystem.deleteAsync(recordedUri);
-        setRecordedUri(null);
-      }
-    } catch (error) {
-      console.error("Error deleting recording:", error);
-    }
-  }
-
-  const handleAddAudio = (newAudio: {
-    name: string;
-    date: string;
-    id: number;
-    duration: number;
-    uri: string;
-    amountOfParticipants: number;
-    transcription?: TranscriptionResultType;
-  }) => {
-    setAllAudios([
-      ...allAudios,
-      {
-        ...newAudio,
-      },
-    ]);
-  };
-
-  const pollTranscriptionResult = async (transcriptionId: string): Promise<TranscriptionResultType | null> => {
-    return new Promise((resolve, reject) => {
-      const interval = setInterval(async () => {
-        try {
-          const result = await getTranscriptionResult(transcriptionId);
-
-          if (result.status === "completed") {
-            clearInterval(interval);
-            resolve({
-              text: result.text,
-              status: result.status,
-              utterances: result.utterances || [],
-            });
-          } else if (result.status === "error") {
-            clearInterval(interval);
-            reject(new Error(result.error || "Transcription failed"));
-          }
-        } catch (error) {
-          clearInterval(interval);
-          reject(error);
-        }
-      }, 5000);
-    });
-  };
-
-  const saveRecording = async () => {
-    try {
-      if (!recordedUri) return;
-
-      const transcriptionId = await uploadAudioToAssemblyAI(
-        recordedUri,
-        amountOfParticipants || 2
-      );
-
-      setStatus("Processing transcription...");
-
-      const transcriptionResult = await pollTranscriptionResult(transcriptionId);
-      setTranscription(transcriptionResult);
-
-      const currentDate = new Date();
-      handleAddAudio({
-        name: `audio number ${allAudios.length + 1}`,
-        date: `${currentDate.getDate()}.${currentDate.getMonth() + 1}.${currentDate.getFullYear()}`,
-        id: allAudios.length + 1,
-        duration: duration,
-        uri: recordedUri,
-        amountOfParticipants: amountOfParticipants,
-        transcription: transcriptionResult,
-      });
-
-      Alert.alert("Recording Saved", "Your recording has been saved.");
-      setIsModalVisible(false);
-      setRecordingName('');
-    } catch (error) {
-      console.error("Save Error:", error);
-      Alert.alert("Save Error", "Failed to save recording.");
-    }
-  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Record Audio</Text>
       <View style={styles.waveformContainer}>
-        <WaveForm
-          isRecording={isRecording}
-          recording={recording}
-          onDurationUpdate={(newDuration) => {
-            setDuration(newDuration);
-          }}
-        />
+        <WaveForm isRecording={isRecording} recording={recording} onDurationUpdate={(newDuration) => {setDuration(newDuration)}}/>
       </View>
-
+      {!isRecording &&
       <View style={styles.amountContainer}>
         <Text style={styles.amountContainerTitle}>Number of participants</Text>
         <View style={styles.numberOfParticipants}>
-          <TouchableOpacity
-            disabled={amountOfParticipants === 0}
-            onPress={() => setAmountOfParticapants(amountOfParticipants - 1)}
-            style={styles.setParticipantsButton}
-          >
-            <Text style={styles.participantsButtonText}>-</Text>
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.participantsButtonText}>{amountOfParticipants}</Text>
-          </View>
-          <TouchableOpacity
-            disabled={amountOfParticipants === 10}
-            onPress={() => setAmountOfParticapants(amountOfParticipants + 1)}
-            style={styles.setParticipantsButton}
-          >
-            <Text style={styles.participantsButtonText}>+</Text>
-          </TouchableOpacity>
+        <TouchableOpacity disabled={amountOfParticipants === 0} onPress={() => setAmountOfParticapants(amountOfParticipants - 1)} style={styles.setParticipantsButton}>
+          <Text style={styles.participantsButtonText}>-</Text>
+        </TouchableOpacity>
+        <View>
+          <Text style={styles.participantsButtonText}>{amountOfParticipants}</Text>
+        </View>
+        <TouchableOpacity disabled={amountOfParticipants === 10} onPress={() => setAmountOfParticapants(amountOfParticipants + 1)} style={styles.setParticipantsButton}>
+          <Text style={styles.participantsButtonText}>+</Text>
+        </TouchableOpacity>
         </View>
       </View>
+      } 
 
       <View style={styles.btnRow}>
-        {!recordedUri ? (
+        {isRecording && (
           <TouchableOpacity
-            style={styles.recordButton}
-            onPress={isRecording ? stopRecording : startRecording}
+            style={styles.saveButton}
+            onPress={stopRecording}
           >
-            <Ionicons
-              name={isRecording ? "stop" : "mic"}
-              size={36}
-              color="#fff"
-            />
+            <Ionicons name="checkmark" size={30} color="white" />
           </TouchableOpacity>
-        ) : (
-          <>
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={() => setIsModalVisible(true)}
-            >
-              <Ionicons name="checkmark" size={30} color="green" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.recordButton}
-              onPress={playRecording}
-            >
-              <Ionicons
-                name={isPlaying ? "pause" : "play"}
-                size={36}
-                color="#fff"
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={deleteRecording}
-            >
-              <Ionicons name="close" size={30} color="red" />
-            </TouchableOpacity>
-          </>
+        )}
+        <TouchableOpacity style={styles.recordButton} onPress={toggleRecording}>
+          <Ionicons name="mic" size={36} color="white" />
+        </TouchableOpacity>
+        {isRecording && (
+          <TouchableOpacity style={styles.deleteButton} onPress={cancelRecording}>
+            <Ionicons name="close" size={30} color="white" />
+          </TouchableOpacity>
         )}
       </View>
-        <SaveRecordingModal
-          isVisible={isModalVisible}
-          onClose={() => setIsModalVisible(false)}
-          onSave={saveRecording}
-          recordingName={recordingName}
-          setRecordingName={setRecordingName}
-        />
     </View>
   );
 }
@@ -310,7 +144,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 80,
     width: "100%",
-    paddingHorizontal: 30,
+    paddingHorizontal: 30, 
   },
   title: {
     fontSize: 24,
@@ -323,24 +157,23 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
-  transcriptionContainer: {
-    maxHeight: 100,
-    width: "100%",
-    marginVertical: 20,
-    backgroundColor: "white",
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  waveform: {
+    width: ScreenWidth * 0.8,
+    height: 100,
+    backgroundColor: "#D3D3D3",
+    borderRadius: 10,
+    marginVertical: 10,
+  },
+  timestamp: {
+    fontSize: 14,
+    color: "#6C6C6C",
   },
   amountContainer: {
-    marginTop: 50,
+    marginTop: 50
   },
   amountContainerTitle: {
     textAlign: "center",
-    marginBottom: 12,
+    marginBottom: 12
   },
   numberOfParticipants: {
     flexDirection: "row",
@@ -354,8 +187,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   participantsButtonText: {
-    fontSize: 20,
+    fontSize: 20
   },
+
   btnRow: {
     marginTop: 50,
     flexDirection: "row",
