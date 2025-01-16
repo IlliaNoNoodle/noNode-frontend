@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Link, useNavigation, useRouter } from 'expo-router';
-import PasswordField from '@/components/PasswordField';
+import PasswordField from '../../components/PasswordField';
 import { useFonts } from 'expo-font';
 
 type Option = {
@@ -108,7 +108,7 @@ const SettingsScreen: React.FC = () => {
       </View>
         {/* Button */}
       <View>
-          <TouchableOpacity onPress={() => {router.navigate('/payment')}} style={styles.changeTarifButton}>
+          <TouchableOpacity onPress={() => {router.navigate('/settings/payment')}} style={styles.changeTarifButton}>
             <Text style={styles.changeTarifText}>Change tariff</Text>
           </TouchableOpacity>
         </View>
