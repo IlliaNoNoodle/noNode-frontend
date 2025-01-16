@@ -111,7 +111,7 @@ const SettingsScreen: React.FC = () => {
       </View>
         {/* Button */}
       <View>
-          <TouchableOpacity onPress={() => {router.navigate('/settings/payment')}} style={styles.changeTarifButton}>
+          <TouchableOpacity onPress={() => {router.navigate('/screens/payment')}} style={styles.changeTarifButton}>
             <Text style={styles.changeTarifText}>Change tariff</Text>
           </TouchableOpacity>
         </View>
