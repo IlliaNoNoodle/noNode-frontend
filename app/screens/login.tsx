@@ -61,7 +61,7 @@ export default function ProfileScreen(props: { onSignIn: () => void }) {
         />
 
         {/* Password Input */}
-        <Text style={styles.label}>Create password</Text>
+        <Text style={styles.label}>Password</Text>
         <View>
           <TextInput
             style={styles.input}
@@ -96,7 +96,7 @@ export default function ProfileScreen(props: { onSignIn: () => void }) {
 
       {/* Footer */}
       <Text style={styles.footerText}>
-        Already have an account? <Text style={styles.footerLink}>Sign up</Text>
+        Already have an account? <Text style={styles.footerLink}>Sign in</Text>
       </Text>
     </View>
   );

@@ -9,8 +9,11 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { audios } from '../store';
+import { audios, filteredAudiosAtom } from '../store';
 import { Audio, AVPlaybackStatus } from 'expo-av';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SortOptions } from '../../components/SortOptions';
+
 
 interface AudioItem {
   name: string;
@@ -23,15 +26,22 @@ interface AudioItem {
 
 const AnalysisLibraryScreen = () => {
   const [allAudios, setAllAudios] = useAtom<AudioItem[]>(audios);
+  const [filteredAudios, setFilteredAudios] = useAtom<AudioItem[]>(filteredAudiosAtom);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isSoundPlaying, setIsPlayingSound] = useState(false)
-  const [isEnded, setIsEnded] = useState(true)
+  const [isSoundPlaying, setIsPlayingSound] = useState(false);
+  const [isEnded, setIsEnded] = useState(true);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [showSortOptions, setShowSortOptions] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
+
+  useEffect(() => {
+    setFilteredAudios(allAudios);
+  }, [allAudios, setFilteredAudios]);
 
   useEffect(() => {
     return sound
       ? () => {
-          sound.unloadAsync(); // Очищення ресурсу при розмонтуванні компонента
+          sound.unloadAsync();
         }
       : undefined;
   }, [sound]);
@@ -47,7 +57,7 @@ const AnalysisLibraryScreen = () => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handlePlayPress = async (uri: string) => {
+  const handlePlayPress = async (uri: string, id: number) => {
     try {
       if (isSoundPlaying) {
         await soundRef.current?.pauseAsync();
@@ -96,10 +106,32 @@ const AnalysisLibraryScreen = () => {
 
 
   const renderRecording = ({ item }: { item: AudioItem }) => (
-    <View style={styles.recordingCard}>
+    <LinearGradient
+    colors={['#4F6DFF', '#C0CBFF']}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 1 }}
+    style={styles.recordingCard}
+  >
+    <View key={item.id} style={styles.recordingCard}>
       <View style={styles.recordingHeader}>
         <Text style={styles.recordingName}>{item.name}</Text>
-        <Icon name="ellipsis-vertical" size={20} color="white" onPress={() => {deleteAudio(item)}}/>
+        <Icon name="ellipsis-vertical" size={22} color="white" onPress={() => {setActiveIndex(activeIndex === item.id ? null : item.id);}}/>
+        {activeIndex === item.id &&
+        <View key={item.id} style={styles.dropdown}>
+          <TouchableOpacity style={styles.dropdownItem}>
+            <Icon name='share-social-outline' size={20}/>
+            <Text>Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.dropdownItem}>
+            <Icon name='pencil-outline' size={20}/>
+            <Text>Rename</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.dropdownItem} onPress={() => {deleteAudio(item)}}>
+            <Icon name='trash-outline' size={20}/>
+            <Text>Delete</Text>
+          </TouchableOpacity>
+        </View>
+        }
       </View>
       <Text style={styles.recordingDetails}>
         {item.date} | {item.amountOfParticipants}
@@ -107,10 +139,11 @@ const AnalysisLibraryScreen = () => {
       <View style={styles.waveformContainer}>
         <Text style={styles.recordingDuration}>{formatTime(Math.floor(item.duration))}</Text>
         <TouchableOpacity>
-          <Icon onPress={() => handlePlayPress(item.uri)} name={isSoundPlaying ? "pause-circle" : "play-circle"} size={30} color="white" />
+          <Icon onPress={() => handlePlayPress(item.uri, item.id)} name={isSoundPlaying ? "pause-circle" : "play-circle"} size={30} color="white" />
         </TouchableOpacity>
       </View>
     </View>
+  </LinearGradient>
   );
 
   return (
@@ -132,16 +165,17 @@ const AnalysisLibraryScreen = () => {
         </View>
         <View style={styles.sortContainer}>
           <Text style={styles.recordsCount}>{allAudios.length} records</Text>
-          <TouchableOpacity style={styles.sortButton}>
+          <TouchableOpacity onPress={() => setShowSortOptions(!showSortOptions)} style={styles.sortButton}>
             <Icon name="funnel-outline" size={20} color="gray" />
             <Text style={styles.sortText}>Sort by</Text>
           </TouchableOpacity>
         </View>
+        {showSortOptions && <SortOptions allAudios={allAudios} setFilteredAudios={setFilteredAudios} filteredAudios={filteredAudios}/>}
       </View>
 
       {/* Recordings List */}
       <FlatList
-        data={allAudios}
+        data={filteredAudios}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderRecording}
         contentContainerStyle={styles.recordingsList}
@@ -209,11 +243,14 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   recordingCard: {
-    backgroundColor: '#6ba7ff',
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 16,
+    marginBottom: 12,
     elevation: 3,
+    shadowColor: '#4F6DFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    padding: 8,
   },
   recordingHeader: {
     flexDirection: 'row',
@@ -226,6 +263,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
   },
+  
   recordingDetails: {
     fontSize: 14,
     color: 'white',
@@ -238,9 +276,26 @@ const styles = StyleSheet.create({
   },
   recordingDuration: {
     fontSize: 16,
+    alignSelf: 'center',
     color: 'white',
     fontWeight: 'bold',
   },
+  dropdown: {
+    position: "absolute",
+    top: 30,
+    right: 0,
+    backgroundColor: "white",
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 100,
+  },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  }
 });
 
 export default AnalysisLibraryScreen;

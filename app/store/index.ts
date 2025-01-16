@@ -10,3 +10,4 @@ export interface audio {
 }
 
 export const audios = atom<audio[]>([])
+export const filteredAudiosAtom = atom<audio[]>([]);

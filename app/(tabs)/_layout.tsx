@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import React, { useState } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 
-import ProfileScreen from '../screens/registration';
+import ProfileScreen from '../screens/login';
 import Colors from '@/constants/Colors';
 import { IconSymbol } from '@/components';
 
