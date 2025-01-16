@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { atom } from 'jotai';
 
 export interface AudioItem {
@@ -18,6 +19,36 @@ export interface AudioItem {
   };
 }
 
-// Initialize with proper types
+
 export const audios = atom<AudioItem[]>([]);
 export const filteredAudiosAtom = atom<AudioItem[]>([]);
+
+
+export const isAuthenticatedAtom = atom(false);
+
+
+export const checkAuthAtom = atom(
+  (get) => get(isAuthenticatedAtom),
+  async (_get, set) => {
+    try {
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        set(isAuthenticatedAtom, false);
+        return;
+      }
+
+      const response = await axios.get(`http://localhost:8080/users/${userId}/id`,{
+        withCredentials: true,
+      });
+
+      if (response.status === 200) {
+        set(isAuthenticatedAtom, true);
+      } else {
+        set(isAuthenticatedAtom, false);
+      }
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      set(isAuthenticatedAtom, false);
+    }
+  }
+);

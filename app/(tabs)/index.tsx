@@ -13,10 +13,11 @@ import { Audio } from "expo-av";
 import { WaveForm } from "@/components";
 import * as FileSystem from "expo-file-system";
 import { useAtom } from 'jotai';
-import { audios } from '../store';
+import { audios, checkAuthAtom, isAuthenticatedAtom } from '../store';
 import TranscriptionResult, { TranscriptionResult as TranscriptionResultType } from '@/components/TranscriptionResult';
 import { uploadAudioToAssemblyAI, getTranscriptionResult } from '@/services/assemblyAI';
 import SaveRecordingModal from "@/components/SaveRecordingModal";
+import { useRouter } from 'expo-router'; 
 
 const ScreenWidth = Dimensions.get("window").width;
 
@@ -45,8 +46,20 @@ export default function RecordAudioScreen() {
   const [status, setStatus] = useState<string>('Initializing');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [recordingName, setRecordingName] = useState('');
+  const router = useRouter();
 
-  async function startRecording() {
+  const startRecording = async () => {
+    const [isAuthenticated] = useAtom(isAuthenticatedAtom);
+    const [, checkAuth] = useAtom(checkAuthAtom);
+  
+    await checkAuth(); 
+  
+    if (!isAuthenticated) {
+      Alert.alert('Authentication Required', 'You must be logged in to record audio.');
+      router.navigate('/screens/registration');
+      return;
+    }
+  
     try {
       await Audio.requestPermissionsAsync();
       await Audio.setAudioModeAsync({
@@ -54,15 +67,15 @@ export default function RecordAudioScreen() {
         playsInSilentModeIOS: true,
       });
       setIsRecording(true);
-
+  
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
       setRecording(recording as ExtendedRecording);
     } catch (err) {
-      console.error("Error starting recording:", err);
+      console.error('Error starting recording:', err);
     }
-  }
+  };
 
   async function stopRecording() {
     try {
