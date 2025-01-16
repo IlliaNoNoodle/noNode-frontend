@@ -8,7 +8,6 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { WaveForm } from "@/components";
@@ -17,6 +16,7 @@ import { useAtom } from 'jotai';
 import { audios } from '../store';
 import TranscriptionResult, { TranscriptionResult as TranscriptionResultType } from '@/components/TranscriptionResult';
 import { uploadAudioToAssemblyAI, getTranscriptionResult } from '@/services/assemblyAI';
+import SaveRecordingModal from "@/components/SaveRecordingModal";
 
 const ScreenWidth = Dimensions.get("window").width;
 
@@ -39,33 +39,16 @@ export default function RecordAudioScreen() {
   const [duration, setDuration] = useState(0);
   const [amountOfParticipants, setAmountOfParticapants] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const soundRef = useRef<Audio.Sound | null>(null); // Для зберігання URI незбереженого запису
-  const [modalVisible, setModalVisible] = useState(false);
-  const [currentRecording, setCurrentRecording] = useState<{
-    uri: string;
-    duration: number;
-    participants: number;
-    transcription: string | null;
-  } | null>(null);
-  
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const [recordedUri, setRecordedUri] = useState<string | null>(null);
   const [transcription, setTranscription] = useState<TranscriptionResultType | null>(null);
   const [status, setStatus] = useState<string>('Initializing');
-
-  const handleTranscriptionComplete = (result: TranscriptionResultType) => {
-    setTranscription(result);
-  };
-
-  function toggleRecording() {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  }
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [recordingName, setRecordingName] = useState('');
 
   async function startRecording() {
     try {
-      await Audio.requestPermissionsAsync(); // Запит дозволів
+      await Audio.requestPermissionsAsync();
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -76,9 +59,8 @@ export default function RecordAudioScreen() {
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
       setRecording(recording as ExtendedRecording);
-      console.log("Запис розпочато");
     } catch (err) {
-      console.error("Помилка під час запису:", err);
+      console.error("Error starting recording:", err);
     }
   }
 
@@ -88,58 +70,55 @@ export default function RecordAudioScreen() {
         await recording.stopAndUnloadAsync();
         const uri = recording.getURI();
         setRecording(null);
+        setRecordedUri(uri);
         setIsRecording(false);
-  
-        // Initialize transcription to null before processing
-        let transcription: TranscriptionResultType | null = null;
-  
-        try {
-          if (!uri) {
-            throw new Error("No recording URI available");
-          }
-  
-          // Upload audio to AssemblyAI and process transcription
-          const transcriptionId = await uploadAudioToAssemblyAI(
-            uri,
-            amountOfParticipants || 2
-          );
-          setStatus("Processing transcription...");
-  
-          transcription = await pollTranscriptionResult(transcriptionId); // Poll and retrieve transcription
-        } catch (error) {
-          console.error("Transcription error:", error);
-          setStatus("Transcription failed");
-        }
-  
-        // Save audio to the atom (state)
-        const currentDate = new Date();
-        handleAddAudio({
-          name: `audio number ${allAudios.length + 1}`,
-          date: `${currentDate.getDate()}.${currentDate.getMonth() + 1}.${currentDate.getFullYear()}`,
-          id: allAudios.length + 1,
-          duration: duration,
-          uri: `${uri}`,
-          amountOfParticipants: amountOfParticipants,
-          transcription: transcription || undefined, // Add transcription here
-        });
       }
     } catch (err) {
       console.error("Error stopping recording:", err);
     }
   }
-  
 
-  async function cancelRecording() {
+  async function playRecording() {
     try {
-      if (recording) {
-        await recording.stopAndUnloadAsync();
-        const uri: any = recording.getURI();
-        await FileSystem.deleteAsync(uri)
-        setRecording(null)
-        setIsRecording(false)
+      if (isPlaying) {
+        await soundRef.current?.pauseAsync();
+        setIsPlaying(false);
+        return;
       }
-    } catch(error) {
-      console.error(error)
+
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+
+      if (!recordedUri) {
+        throw new Error("No recording URI available");
+      }
+
+      const { sound } = await Audio.Sound.createAsync({ uri: recordedUri });
+      soundRef.current = sound;
+      setIsPlaying(true);
+
+      await sound.playAsync();
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsPlaying(false);
+          sound.unloadAsync();
+        }
+      });
+    } catch (error) {
+      console.error("Playback Error:", error);
+      Alert.alert("Playback Error", "Failed to play recording.");
+    }
+  }
+
+  async function deleteRecording() {
+    try {
+      if (recordedUri) {
+        await FileSystem.deleteAsync(recordedUri);
+        setRecordedUri(null);
+      }
+    } catch (error) {
+      console.error("Error deleting recording:", error);
     }
   }
 
@@ -160,177 +139,149 @@ export default function RecordAudioScreen() {
     ]);
   };
 
-const pollTranscriptionResult = async (transcriptionId: string): Promise<TranscriptionResultType | null> => {
-  return new Promise((resolve, reject) => {
-    const interval = setInterval(async () => {
-      try {
-        const result = await getTranscriptionResult(transcriptionId);
+  const pollTranscriptionResult = async (transcriptionId: string): Promise<TranscriptionResultType | null> => {
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const result = await getTranscriptionResult(transcriptionId);
 
-        if (result.status === "completed") {
+          if (result.status === "completed") {
+            clearInterval(interval);
+            resolve({
+              text: result.text,
+              status: result.status,
+              utterances: result.utterances || [],
+            });
+          } else if (result.status === "error") {
+            clearInterval(interval);
+            reject(new Error(result.error || "Transcription failed"));
+          }
+        } catch (error) {
           clearInterval(interval);
-          resolve({
-            text: result.text,
-            status: result.status,
-            utterances: result.utterances || [],
-          });
-        } else if (result.status === "error") {
-          clearInterval(interval);
-          reject(new Error(result.error || "Transcription failed"));
+          reject(error);
         }
-      } catch (error) {
-        clearInterval(interval);
-        reject(error);
-      }
-    }, 5000); // Poll every 5 seconds
-  });
-};
-
-  const playRecording = async () => {
-    try {
-      if (isPlaying) {
-        await soundRef.current?.pauseAsync();
-        setIsPlaying(false);
-        return;
-      }
-  
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-      }
-  
-      if (!recording?._uri) {
-        throw new Error('No recording URI available');
-      }
-  
-      const { sound } = await Audio.Sound.createAsync({ uri: recording._uri });
-      soundRef.current = sound;
-      setIsPlaying(true);
-  
-      await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setIsPlaying(false);
-          sound.unloadAsync();
-        }
-      });
-    } catch (error) {
-      console.error('Playback Error:', error);
-      Alert.alert('Playback Error', 'Failed to play recording.');
-    }
+      }, 5000);
+    });
   };
 
-  const saveRecording = () => {
-    if (!recording || !recording._uri) return;
-    
+  const saveRecording = async () => {
     try {
-      setModalVisible(true);
-      setCurrentRecording({
-        uri: recording._uri,
+      if (!recordedUri) return;
+
+      const transcriptionId = await uploadAudioToAssemblyAI(
+        recordedUri,
+        amountOfParticipants || 2
+      );
+
+      setStatus("Processing transcription...");
+
+      const transcriptionResult = await pollTranscriptionResult(transcriptionId);
+      setTranscription(transcriptionResult);
+
+      const currentDate = new Date();
+      handleAddAudio({
+        name: `audio number ${allAudios.length + 1}`,
+        date: `${currentDate.getDate()}.${currentDate.getMonth() + 1}.${currentDate.getFullYear()}`,
+        id: allAudios.length + 1,
         duration: duration,
-        participants: amountOfParticipants,
-        transcription: transcription?.text || null
+        uri: recordedUri,
+        amountOfParticipants: amountOfParticipants,
+        transcription: transcriptionResult,
       });
+
+      Alert.alert("Recording Saved", "Your recording has been saved.");
+      setIsModalVisible(false);
+      setRecordingName('');
     } catch (error) {
-      console.error('Save Error:', error);
-      Alert.alert('Save Error', 'Failed to save recording.');
+      console.error("Save Error:", error);
+      Alert.alert("Save Error", "Failed to save recording.");
     }
   };
-
-  const cancelSave = () => {
-    setRecording(null);
-    setModalVisible(false);
-  };
-
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Record Audio</Text>
       <View style={styles.waveformContainer}>
-        <WaveForm 
-          isRecording={isRecording} 
-          recording={recording} 
-          onDurationUpdate={(newDuration) => {setDuration(newDuration)}}
+        <WaveForm
+          isRecording={isRecording}
+          recording={recording}
+          onDurationUpdate={(newDuration) => {
+            setDuration(newDuration);
+          }}
         />
       </View>
-
-      {/* Show transcription result if available */}
-      {transcription && (
-        <ScrollView style={styles.transcriptionContainer}>
-          <TranscriptionResult result={transcription} />
-        </ScrollView>
-      )}
 
       <View style={styles.amountContainer}>
         <Text style={styles.amountContainerTitle}>Number of participants</Text>
         <View style={styles.numberOfParticipants}>
-        <TouchableOpacity disabled={amountOfParticipants === 0} onPress={() => setAmountOfParticapants(amountOfParticipants - 1)} style={styles.setParticipantsButton}>
-          <Text style={styles.participantsButtonText}>-</Text>
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.participantsButtonText}>{amountOfParticipants}</Text>
-        </View>
-        <TouchableOpacity disabled={amountOfParticipants === 10} onPress={() => setAmountOfParticapants(amountOfParticipants + 1)} style={styles.setParticipantsButton}>
-          <Text style={styles.participantsButtonText}>+</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            disabled={amountOfParticipants === 0}
+            onPress={() => setAmountOfParticapants(amountOfParticipants - 1)}
+            style={styles.setParticipantsButton}
+          >
+            <Text style={styles.participantsButtonText}>-</Text>
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.participantsButtonText}>{amountOfParticipants}</Text>
+          </View>
+          <TouchableOpacity
+            disabled={amountOfParticipants === 10}
+            onPress={() => setAmountOfParticapants(amountOfParticipants + 1)}
+            style={styles.setParticipantsButton}
+          >
+            <Text style={styles.participantsButtonText}>+</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      { !recording ? (
-        <>
-            <View style={styles.btnRow}>
-              <TouchableOpacity
-                style={styles.recordButton}
-                onPress={async () => {
-                  if (isRecording) {
-                    stopRecording();
-                  } else if (recording) {
-                    await playRecording(); 
-                  } else {
-                    startRecording()
-                  }
-                }}
-              >
-                <Ionicons
-                  name={isRecording ? 'stop' : recording ? 'play' : 'mic'} // Залежно від стану
-                  size={36}
-                  color="#fff"
-                />
-              </TouchableOpacity>
-            </View>
-                </>
-              ) : (
-                
-            <View style={styles.btnRow}>
-
+      <View style={styles.btnRow}>
+        {!recordedUri ? (
+          <TouchableOpacity
+            style={styles.recordButton}
+            onPress={isRecording ? stopRecording : startRecording}
+          >
+            <Ionicons
+              name={isRecording ? "stop" : "mic"}
+              size={36}
+              color="#fff"
+            />
+          </TouchableOpacity>
+        ) : (
+          <>
             <TouchableOpacity
               style={styles.saveButton}
-              onPress={saveRecording}
+              onPress={() => setIsModalVisible(true)}
             >
-              <Ionicons name="checkmark" size={30} color="white" />
+              <Ionicons name="checkmark" size={30} color="green" />
             </TouchableOpacity>
-       
+
             <TouchableOpacity
               style={styles.recordButton}
-              onPress={() => {
-                if (isRecording) {
-                  stopRecording();
-                } else {
-                  startRecording();
-                }
-              }}
+              onPress={playRecording}
             >
               <Ionicons
-                name={'pause'}
+                name={isPlaying ? "pause" : "play"}
                 size={36}
                 color="#fff"
               />
             </TouchableOpacity>
-      
 
-              <TouchableOpacity style={styles.deleteButton} onPress={cancelRecording}>
-                <Ionicons name="close" size={30} color="white" />
-              </TouchableOpacity>
-          </View>
-              )}
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={deleteRecording}
+            >
+              <Ionicons name="close" size={30} color="red" />
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+        <SaveRecordingModal
+          isVisible={isModalVisible}
+          onClose={() => setIsModalVisible(false)}
+          onSave={saveRecording}
+          recordingName={recordingName}
+          setRecordingName={setRecordingName}
+        />
     </View>
   );
 }
@@ -342,7 +293,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 80,
     width: "100%",
-    paddingHorizontal: 30, 
+    paddingHorizontal: 30,
   },
   title: {
     fontSize: 24,
@@ -355,23 +306,24 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
-  waveform: {
-    width: ScreenWidth * 0.8,
-    height: 100,
-    backgroundColor: "#D3D3D3",
-    borderRadius: 10,
-    marginVertical: 10,
-  },
-  timestamp: {
-    fontSize: 14,
-    color: "#6C6C6C",
+  transcriptionContainer: {
+    maxHeight: 100,
+    width: "100%",
+    marginVertical: 20,
+    backgroundColor: "white",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   amountContainer: {
-    marginTop: 50
+    marginTop: 50,
   },
   amountContainerTitle: {
     textAlign: "center",
-    marginBottom: 12
+    marginBottom: 12,
   },
   numberOfParticipants: {
     flexDirection: "row",
@@ -385,9 +337,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   participantsButtonText: {
-    fontSize: 20
+    fontSize: 20,
   },
-
   btnRow: {
     marginTop: 50,
     flexDirection: "row",
@@ -421,17 +372,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#E946464F",
     justifyContent: "center",
     alignItems: "center",
-  },
-  transcriptionContainer: {
-    maxHeight: 100,
-    width: '100%',
-    marginVertical: 20,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
 });
