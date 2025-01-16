@@ -1,4 +1,5 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Stack } from 'expo-router';
+import { Provider } from 'jotai';
 import React, { useState } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 
@@ -17,6 +18,7 @@ export default function TabLayout() {
   }
 
   return (
+    <Provider>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
@@ -53,6 +55,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="settings-outline" color={color} />,
         }}
       />
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="registration" options={{ 
+          headerShown: false,
+          presentation: 'modal' 
+        }} />
+      </Stack>
     </Tabs>
+    </Provider>
   );
 }

@@ -49,6 +49,9 @@ const SettingsScreen: React.FC = () => {
     'NotoSans-Bold': require('../../assets/fonts/NotoSans-Bold.ttf'),
     'NotoSans-SemiBold': require('../../assets/fonts/NotoSans-SemiBold.ttf'),
   });
+  const handleSignOut = () => {
+    router.push('/registration');
+  };
 
   const navigation = useNavigation()
   const router = useRouter()
@@ -126,7 +129,7 @@ const SettingsScreen: React.FC = () => {
         <PasswordField />
         {/* Buttons */}
         <View>
-          <TouchableOpacity style={styles.signOutButton}>
+          <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
             <Text style={styles.signOutText}>Sign out</Text>
           </TouchableOpacity>
           <TouchableOpacity>
