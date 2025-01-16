@@ -7,7 +7,9 @@ import {
   ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from 'expo-router';
+import { Link, useNavigation, useRouter } from 'expo-router';
+import PasswordField from '../../components/PasswordField';
+import { useFonts } from 'expo-font';
 
 type Option = {
   id: string;
@@ -41,8 +43,15 @@ const initialSettingsData: Section[] = [
 ];
 
 const SettingsScreen: React.FC = () => {
+  const [autosaveHighToxicRating, setAutosaveHighToxicRating] = useState(false);
+  const [fontsLoaded] = useFonts({
+    'NotoSans-Regular': require('../../assets/fonts/NotoSans-Regular.ttf'),
+    'NotoSans-Bold': require('../../assets/fonts/NotoSans-Bold.ttf'),
+    'NotoSans-SemiBold': require('../../assets/fonts/NotoSans-SemiBold.ttf'),
+  });
 
   const navigation = useNavigation()
+  const router = useRouter()
 
   const [settings, setSettings] = useState<Section[]>(initialSettingsData);
 
@@ -53,55 +62,83 @@ const SettingsScreen: React.FC = () => {
     setSettings(updatedSettings);
   };
 
+  if (!fontsLoaded) {
+    return null; // or a loading screen
+  }
+
   return (
-    <View style={styles.container}>
+    <ScrollView 
+    style={styles.container}
+    contentContainerStyle={styles.scrollViewContent}
+    showsVerticalScrollIndicator={false}
+    keyboardShouldPersistTaps="handled"
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
-      </View>
-
-      {/* Settings List */}
-      <ScrollView contentContainerStyle={styles.settingsContainer}>
-        {settings.map((section, sectionIndex) => (
-          <View key={section.section} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.section}</Text>
-            {section.options.map((option, optionIndex) => (
-              <View
-                key={option.id}
-                style={styles.option}
-                onPress={() => toggleCheckbox(sectionIndex, optionIndex)}
-              >
-                <View style={styles.optionDetails}>
-                  <Text style={styles.optionTitle}>{option.title}</Text>
-                  <Text style={styles.optionDescription}>{option.description}</Text>
-                </View>
-                <TouchableOpacity onPress={() => {toggleCheckbox(sectionIndex, optionIndex)}}>
-                  <Icon
-                    name={option.checked ? 'checkbox' : 'square-outline'}
-                    size={24}
-                    color={option.checked ? '#4A90E2' : '#DADBE1'}
-                  />
-                </TouchableOpacity>
-              </View>
-            ))}
+        <View style={styles.headerSectionColumn}>
+        <View style={styles.headerSection}>
+            <Text style={styles.headerSubtitleTop}>Autosave analysis with High Toxic Rating</Text>
+            <TouchableOpacity 
+              onPress={() => setAutosaveHighToxicRating(!autosaveHighToxicRating)}
+              style={{ 
+                width: 40,  // Fixed width to ensure consistent space
+                height: 40,  // Fixed height to ensure vertical centering
+                justifyContent: 'center', 
+                alignItems: 'center' 
+              }}
+            >
+              <Icon
+                name={autosaveHighToxicRating ? 'checkbox' : 'checkbox-outline'}
+                size={24}
+                color={autosaveHighToxicRating ? '#007AFF' : '#DADBE1'}
+              />
+            </TouchableOpacity>
           </View>
-        ))}
-        {/* Buttons */}
-        <View style={styles.buttonsContainer}>
-          <TouchableOpacity style={styles.signOutButton}>
-            <Text style={styles.signOutText}>Buy Full Version</Text>
+           <Text style={styles.headerSubtitleBottom}>Please note analysis with low Toxic Ratings are removed after 28 days</Text>
+        </View>
+        <View style={[styles.headerSection, styles.headerSectionColumn]}>
+            <Text style={styles.headerSubtitleTop}>Voice Recorder</Text>
+            <Text style={styles.headerSubtitleBottom}>Version 1.0</Text>
+        </View>
+        <View style={[styles.headerSection, styles.headerSectionColumn]}>
+            <Text style={styles.headerSubtitleTop}>Current tariff</Text>
+            <Text style={styles.headerSubtitleBottom}>£9.99 / Month</Text>
+        </View>
+      </View>
+        {/* Button */}
+      <View>
+          <TouchableOpacity onPress={() => {router.navigate('/screens/payment')}} style={styles.changeTarifButton}>
+            <Text style={styles.changeTarifText}>Change tariff</Text>
           </TouchableOpacity>
+        </View>
+        {/*account section*/}
+        <View style={styles.header}>
+        <Text style={[styles.headerTitle, styles.headerTitleBlue]}>Account</Text>
+          <View style={[styles.headerSectionColumn, styles.headerSectionColumnAccount]}>
+          <Text style={styles.headerSubtitleTop}>Email</Text>
+          <Text style={styles.headerSubtitleBottom}>michelle.rivera@example.com</Text>
+          </View>
+      </View>
+      {/* Settings List */}
+      <View>
+        {/* Password field */}
+        <PasswordField />
+        {/* Buttons */}
+        <View>
           <TouchableOpacity style={styles.signOutButton}>
             <Text style={styles.signOutText}>Sign out</Text>
           </TouchableOpacity>
           <TouchableOpacity>
-            <Text style={styles.deleteAccountText}>DELETE ACCOUNT</Text>
+            <Text style={[styles.deleteAccountText]}>DELETE ACCOUNT</Text>
           </TouchableOpacity>
         </View>
-        </ScrollView>
-    </View>
+        </View>
+    </ScrollView>
   );
 };
+
+export default SettingsScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -111,13 +148,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 30,
   },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 30,
+    paddingBottom: 100,
+  },
   header: {
     marginTop: 40,
     marginBottom: 20,
   },
+  headerSection: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  headerSectionColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  headerSectionColumnAccount: {
+    marginTop: 16,
+  },
   headerTitle: {
-    fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'NotoSans-Bold',
+    fontSize: 24,
+  },
+  headerTitleBlue: {
+    color: '#4F6DFF',
+    fontSize: 20,
+  },
+  headerSubtitleTop:{
+    fontWeight: '600',
+    fontFamily: 'NotoSans-SemiBold',
+    marginBottom: 8,
+  },
+  headerSubtitleBottom:{
+    fontWeight: '400',
+    fontFamily: 'NotoSans-Regular',
   },
   settingsContainer: {
     paddingBottom: 20,
@@ -128,8 +199,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4F6DFF',
     marginBottom: 12,
+    fontFamily: 'NotoSans-Bold',
   },
   option: {
     flexDirection: 'row',
@@ -145,14 +216,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#000',
+    fontFamily: 'NotoSans-Bold',
   },
   optionDescription: {
     fontSize: 12,
     color: 'gray',
-  },
-  buttonsContainer: {
-    marginTop: 16,
-    marginBottom: 20,
+    fontFamily: 'NotoSans-Regular',
   },
   signOutButton: {
     backgroundColor: '#E7E7FF',
@@ -162,16 +231,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   signOutText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#000',
+    fontFamily: 'NotoSans-SemiBold',
+    color: '#0B102A',
   },
   deleteAccountText: {
-    fontSize: 14,
+    fontFamily: 'NotoSans-Bold',
     color: 'red',
-    textAlign: 'center',
-    fontWeight: 'bold',
+    textAlign:'center',
+    marginTop: 24,
+  },
+  changeTarifButton: {
+    backgroundColor: '#4F6DFF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  changeTarifText: {
+    fontFamily: 'NotoSans-SemiBold',
+    color: '#F6F6F6',
   },
 });
-
-export default SettingsScreen;
