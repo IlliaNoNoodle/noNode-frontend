@@ -46,28 +46,32 @@ export default function RecordAudioScreen() {
   const [status, setStatus] = useState<string>('Initializing');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [recordingName, setRecordingName] = useState('');
+  const [, checkAuth] = useAtom(checkAuthAtom); 
+  const [isAuthenticated, setIsAuthenticated] = useAtom(isAuthenticatedAtom);
   const router = useRouter();
 
+
   const startRecording = async () => {
-    const [isAuthenticated] = useAtom(isAuthenticatedAtom);
-    const [, checkAuth] = useAtom(checkAuthAtom);
-  
     await checkAuth(); 
-  
+
     if (!isAuthenticated) {
-      Alert.alert('Authentication Required', 'You must be logged in to record audio.');
-      router.navigate('/screens/registration');
+      Alert.alert(
+        'Authentication Required',
+        'You must be logged in to record audio.'
+      );
+      router.push('/screens/registration'); 
       return;
     }
-  
+
     try {
       await Audio.requestPermissionsAsync();
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
+
       setIsRecording(true);
-  
+
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
