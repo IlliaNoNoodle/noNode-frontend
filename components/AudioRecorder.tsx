@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Button, Text } from 'react-native';
 import { Audio } from 'expo-av';
+import { useAtom } from 'jotai';
+import { audios, AudioItem } from '@/app/store';
 import { getTranscriptionResult, uploadAudioToAssemblyAI } from '@/services/assemblyAI';
 
 interface AudioRecorderProps {
@@ -19,6 +21,7 @@ interface TranscriptionResult {
 export default function AudioRecorder({ onTranscriptionComplete }: AudioRecorderProps) {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [status, setStatus] = useState<string>('Idle');
+  const [audioList, setAudioList] = useAtom(audios);
 
   const startRecording = async () => {
     try {
@@ -70,11 +73,7 @@ export default function AudioRecorder({ onTranscriptionComplete }: AudioRecorder
       if (result) {
         if (result.status === 'completed') {
           clearInterval(interval);
-          onTranscriptionComplete({
-            text: result.text,
-            status: result.status,
-            words: result.words
-          });
+          handleTranscriptionComplete(result);
           setStatus('Transcription complete');
         } else if (result.status === 'error') {
           clearInterval(interval);
@@ -87,6 +86,22 @@ export default function AudioRecorder({ onTranscriptionComplete }: AudioRecorder
         }
       }
     }, 5000);
+  };
+
+  const handleTranscriptionComplete = (transcriptionResult: TranscriptionResult) => {
+    // Add new audio to Jotai store
+    const newAudio: AudioItem = {
+      id: Date.now(),
+      name: `Recording ${audioList.length + 1}`,
+      date: new Date().toISOString(),
+      duration: 0, // You'll need to calculate this
+      uri: recording?.getURI() || '',
+      amountOfParticipants: transcriptionResult.speakers?.length || 2,
+      transcription: transcriptionResult
+    };
+    
+    setAudioList(prev => [...prev, newAudio]);
+    onTranscriptionComplete(transcriptionResult);
   };
 
   return (

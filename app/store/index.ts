@@ -1,12 +1,23 @@
-import { atom } from "jotai";
+import { atom } from 'jotai';
 
-export interface audio {
-    name: string
-    date: string
-    id: number
-    duration: number
-    uri: string
-    amountOfParticipants: number
+export interface AudioItem {
+  name: string;
+  date: string;
+  duration: number;
+  id: number;
+  uri: string;
+  amountOfParticipants: number;
+  transcription?: {
+    text: string | null;
+    status: string;
+    utterances?: Array<{
+      speaker: string;
+      text: string;
+      timestamp: string;
+    }>;
+  };
 }
 
-export const audios = atom<audio[]>([])
+// Initialize with proper types
+export const audios = atom<AudioItem[]>([]);
+export const filteredAudiosAtom = atom<AudioItem[]>([]);

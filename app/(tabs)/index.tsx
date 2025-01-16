@@ -1,27 +1,59 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  ScrollView,
+  Alert,
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { WaveForm } from "@/components";
 import * as FileSystem from "expo-file-system";
-import { useAtom } from "jotai";
-import { audios } from "../store";
+import { useAtom } from 'jotai';
+import { audios } from '../store';
+import TranscriptionResult, { TranscriptionResult as TranscriptionResultType } from '@/components/TranscriptionResult';
+import { uploadAudioToAssemblyAI, getTranscriptionResult } from '@/services/assemblyAI';
 
 const ScreenWidth = Dimensions.get("window").width;
 
+interface ExtendedRecording extends Audio.Recording {
+  _uri: string;
+  transcription?: {
+    text: string | null;
+    status: string;
+    utterances?: Array<{
+      speaker: string;
+      text: string;
+    }>;
+  };
+}
+
 export default function RecordAudioScreen() {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
   const [allAudios, setAllAudios] = useAtom(audios);
-  const [duration, setDuration] = useState(0)
-  const [amountOfParticipants, setAmountOfParticapants] = useState(0)
+  const [recording, setRecording] = useState<ExtendedRecording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [amountOfParticipants, setAmountOfParticapants] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const soundRef = useRef<Audio.Sound | null>(null); // Для зберігання URI незбереженого запису
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentRecording, setCurrentRecording] = useState<{
+    uri: string;
+    duration: number;
+    participants: number;
+    transcription: string | null;
+  } | null>(null);
+  
+  const [transcription, setTranscription] = useState<TranscriptionResultType | null>(null);
+  const [status, setStatus] = useState<string>('Initializing');
+
+  const handleTranscriptionComplete = (result: TranscriptionResultType) => {
+    setTranscription(result);
+  };
 
   function toggleRecording() {
     if (isRecording) {
@@ -43,7 +75,7 @@ export default function RecordAudioScreen() {
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
-      setRecording(recording);
+      setRecording(recording as ExtendedRecording);
       console.log("Запис розпочато");
     } catch (err) {
       console.error("Помилка під час запису:", err);
@@ -54,29 +86,48 @@ export default function RecordAudioScreen() {
     try {
       if (recording) {
         await recording.stopAndUnloadAsync();
-        const uri = recording.getURI(); // Отримуємо URI записаного файлу
-        alert(uri);
+        const uri = recording.getURI();
         setRecording(null);
         setIsRecording(false);
-        const currentDate = new Date
-        setAllAudios([
-          ...allAudios, 
-          { 
-            name: `audio number ${allAudios.length + 1}`,
-            date: `${currentDate.getDate()}.${currentDate.getMonth()}.${currentDate.getFullYear()}`,
-            id: allAudios.length + 1,
-            duration: duration,
-            uri: `${uri}`,
-            amountOfParticipants: amountOfParticipants
+  
+        // Initialize transcription to null before processing
+        let transcription: TranscriptionResultType | null = null;
+  
+        try {
+          if (!uri) {
+            throw new Error("No recording URI available");
           }
-        ])
-      } else {
-        console.warn("Немає активного запису для зупинки.");
+  
+          // Upload audio to AssemblyAI and process transcription
+          const transcriptionId = await uploadAudioToAssemblyAI(
+            uri,
+            amountOfParticipants || 2
+          );
+          setStatus("Processing transcription...");
+  
+          transcription = await pollTranscriptionResult(transcriptionId); // Poll and retrieve transcription
+        } catch (error) {
+          console.error("Transcription error:", error);
+          setStatus("Transcription failed");
+        }
+  
+        // Save audio to the atom (state)
+        const currentDate = new Date();
+        handleAddAudio({
+          name: `audio number ${allAudios.length + 1}`,
+          date: `${currentDate.getDate()}.${currentDate.getMonth() + 1}.${currentDate.getFullYear()}`,
+          id: allAudios.length + 1,
+          duration: duration,
+          uri: `${uri}`,
+          amountOfParticipants: amountOfParticipants,
+          transcription: transcription || undefined, // Add transcription here
+        });
       }
     } catch (err) {
-      console.error("Помилка при зупинці запису:", err);
+      console.error("Error stopping recording:", err);
     }
   }
+  
 
   async function cancelRecording() {
     try {
@@ -92,13 +143,122 @@ export default function RecordAudioScreen() {
     }
   }
 
+  const handleAddAudio = (newAudio: {
+    name: string;
+    date: string;
+    id: number;
+    duration: number;
+    uri: string;
+    amountOfParticipants: number;
+    transcription?: TranscriptionResultType;
+  }) => {
+    setAllAudios([
+      ...allAudios,
+      {
+        ...newAudio,
+      },
+    ]);
+  };
+
+const pollTranscriptionResult = async (transcriptionId: string): Promise<TranscriptionResultType | null> => {
+  return new Promise((resolve, reject) => {
+    const interval = setInterval(async () => {
+      try {
+        const result = await getTranscriptionResult(transcriptionId);
+
+        if (result.status === "completed") {
+          clearInterval(interval);
+          resolve({
+            text: result.text,
+            status: result.status,
+            utterances: result.utterances || [],
+          });
+        } else if (result.status === "error") {
+          clearInterval(interval);
+          reject(new Error(result.error || "Transcription failed"));
+        }
+      } catch (error) {
+        clearInterval(interval);
+        reject(error);
+      }
+    }, 5000); // Poll every 5 seconds
+  });
+};
+
+  const playRecording = async () => {
+    try {
+      if (isPlaying) {
+        await soundRef.current?.pauseAsync();
+        setIsPlaying(false);
+        return;
+      }
+  
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+  
+      if (!recording?._uri) {
+        throw new Error('No recording URI available');
+      }
+  
+      const { sound } = await Audio.Sound.createAsync({ uri: recording._uri });
+      soundRef.current = sound;
+      setIsPlaying(true);
+  
+      await sound.playAsync();
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsPlaying(false);
+          sound.unloadAsync();
+        }
+      });
+    } catch (error) {
+      console.error('Playback Error:', error);
+      Alert.alert('Playback Error', 'Failed to play recording.');
+    }
+  };
+
+  const saveRecording = () => {
+    if (!recording || !recording._uri) return;
+    
+    try {
+      setModalVisible(true);
+      setCurrentRecording({
+        uri: recording._uri,
+        duration: duration,
+        participants: amountOfParticipants,
+        transcription: transcription?.text || null
+      });
+    } catch (error) {
+      console.error('Save Error:', error);
+      Alert.alert('Save Error', 'Failed to save recording.');
+    }
+  };
+
+  const cancelSave = () => {
+    setRecording(null);
+    setModalVisible(false);
+  };
+
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Record Audio</Text>
       <View style={styles.waveformContainer}>
-        <WaveForm isRecording={isRecording} recording={recording} onDurationUpdate={(newDuration) => {setDuration(newDuration)}}/>
+        <WaveForm 
+          isRecording={isRecording} 
+          recording={recording} 
+          onDurationUpdate={(newDuration) => {setDuration(newDuration)}}
+        />
       </View>
-      {!isRecording &&
+
+      {/* Show transcription result if available */}
+      {transcription && (
+        <ScrollView style={styles.transcriptionContainer}>
+          <TranscriptionResult result={transcription} />
+        </ScrollView>
+      )}
+
       <View style={styles.amountContainer}>
         <Text style={styles.amountContainerTitle}>Number of participants</Text>
         <View style={styles.numberOfParticipants}>
@@ -113,26 +273,64 @@ export default function RecordAudioScreen() {
         </TouchableOpacity>
         </View>
       </View>
-      } 
 
-      <View style={styles.btnRow}>
-        {isRecording && (
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={stopRecording}
-          >
-            <Ionicons name="checkmark" size={30} color="white" />
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={styles.recordButton} onPress={toggleRecording}>
-          <Ionicons name="mic" size={36} color="white" />
-        </TouchableOpacity>
-        {isRecording && (
-          <TouchableOpacity style={styles.deleteButton} onPress={cancelRecording}>
-            <Ionicons name="close" size={30} color="white" />
-          </TouchableOpacity>
-        )}
-      </View>
+      { !recording ? (
+        <>
+            <View style={styles.btnRow}>
+              <TouchableOpacity
+                style={styles.recordButton}
+                onPress={async () => {
+                  if (isRecording) {
+                    stopRecording();
+                  } else if (recording) {
+                    await playRecording(); 
+                  } else {
+                    startRecording()
+                  }
+                }}
+              >
+                <Ionicons
+                  name={isRecording ? 'stop' : recording ? 'play' : 'mic'} // Залежно від стану
+                  size={36}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+            </View>
+                </>
+              ) : (
+                
+            <View style={styles.btnRow}>
+
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={saveRecording}
+            >
+              <Ionicons name="checkmark" size={30} color="white" />
+            </TouchableOpacity>
+       
+            <TouchableOpacity
+              style={styles.recordButton}
+              onPress={() => {
+                if (isRecording) {
+                  stopRecording();
+                } else {
+                  startRecording();
+                }
+              }}
+            >
+              <Ionicons
+                name={'pause'}
+                size={36}
+                color="#fff"
+              />
+            </TouchableOpacity>
+      
+
+              <TouchableOpacity style={styles.deleteButton} onPress={cancelRecording}>
+                <Ionicons name="close" size={30} color="white" />
+              </TouchableOpacity>
+          </View>
+              )}
     </View>
   );
 }
@@ -223,5 +421,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#E946464F",
     justifyContent: "center",
     alignItems: "center",
+  },
+  transcriptionContainer: {
+    maxHeight: 100,
+    width: '100%',
+    marginVertical: 20,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });
