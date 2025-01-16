@@ -1,40 +1,78 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { AudioItem } from '../app/store';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
+
+interface AudioItem {
+  name: string;
+  date: string;
+  duration: number;
+  id: number;
+  uri: string;
+  amountOfParticipants: number
+}
 
 interface SortOptionsProps {
   allAudios: AudioItem[];
-  setFilteredAudios: (audios: AudioItem[]) => void;
-  filteredAudios: AudioItem[];
-  onSort?: () => void;
+  setFilteredAudios: React.Dispatch<React.SetStateAction<AudioItem[]>>;
 }
 
-export const SortOptions: React.FC<SortOptionsProps> = ({ 
-  allAudios, 
-  setFilteredAudios, 
-  filteredAudios,
-  onSort 
-}) => {
-  const sortByDate = () => {
-    const sorted = [...filteredAudios].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    setFilteredAudios(sorted);
-    onSort?.();
+const sortOptions = [
+  { id: '1', label: 'All' },
+  { id: '2', label: 'Date' },
+  { id: '3', label: 'Size' },
+  { id: '4', label: 'Toxic Truth Rating' },
+];
+
+export const SortOptions: React.FC<SortOptionsProps> = ({ allAudios, setFilteredAudios }) => {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedId === '1') {
+      setFilteredAudios(allAudios.filter(audio => audio));
+    } else if (selectedId === '2') {
+      const sortedByDate = [...allAudios].sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setFilteredAudios(sortedByDate);
+    } else if (selectedId === '3') {
+      setFilteredAudios(allAudios.filter(audio => audio.amountOfParticipants > 2));
+    } else if (selectedId === '4') {
+      [...allAudios]
+      setFilteredAudios(allAudios.sort((a, b) => b.amountOfParticipants - a.amountOfParticipants));
+    }
+  }, [selectedId, allAudios, setFilteredAudios]);
+
+  const handleSortOptionPress = (id: string) => {
+    setSelectedId(id)
   };
 
-  const sortByDuration = () => {
-    const sorted = [...filteredAudios].sort((a, b) => b.duration - a.duration);
-    setFilteredAudios(sorted);
-    onSort?.();
+  const renderItem = ({ item }: { item: { id: string; label: string } }) => {
+    const isSelected = selectedId === item.id;
+    return (
+      <TouchableOpacity
+      style={[styles.option, isSelected && styles.selectedOption]}
+      onPress={() => handleSortOptionPress(item.id)}
+    >
+      <View style={styles.iconContainer}>
+        {isSelected && (
+          <Image
+            source={require('../assets/images/checkmark.png')}
+            style={styles.icon}
+          />
+        )}
+      </View>
+      <Text style={styles.optionText}>{item.label}</Text>
+    </TouchableOpacity>
+    );
   };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={sortByDate} style={styles.option}>
-        <Text style={styles.optionText}>Date</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={sortByDuration} style={styles.option}>
-        <Text style={styles.optionText}>Duration</Text>
-      </TouchableOpacity>
+      <FlatList
+        data={sortOptions}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+/>
+
     </View>
   );
 };
@@ -42,23 +80,44 @@ export const SortOptions: React.FC<SortOptionsProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    right: 0,
-    top: 85,
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
+    top: '100%',
+    zIndex: 2,
     borderRadius: 8,
-    padding: 8,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    zIndex: 1000,
+    display: 'flex',
+    alignSelf: 'flex-end', 
+    width: 204,
+    paddingVertical: 16,
+  },
+  header: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
   option: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingTop: 5,
+    paddingBottom: 5,
+    paddingLeft: 10,
   },
   optionText: {
-    fontSize: 14,
+    fontSize: 16,
+    flex: 1,
   },
-}); 
+  selectedOption: {
+    backgroundColor: '#E5EEFF',
+  },
+  icon: {
+    width: 16, // Adjust size as needed
+    height: 16,
+    marginLeft: 10,
+  },
+  iconContainer: {
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+});
