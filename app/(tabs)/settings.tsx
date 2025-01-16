@@ -61,6 +61,9 @@ const SettingsScreen: React.FC = () => {
       !updatedSettings[sectionIndex].options[optionIndex].checked;
     setSettings(updatedSettings);
   };
+  const handleSignOut = () => {
+    router.replace('/registration');
+  };
 
   if (!fontsLoaded) {
     return null; // or a loading screen
