@@ -49,6 +49,9 @@ const SettingsScreen: React.FC = () => {
     'NotoSans-Bold': require('../../assets/fonts/NotoSans-Bold.ttf'),
     'NotoSans-SemiBold': require('../../assets/fonts/NotoSans-SemiBold.ttf'),
   });
+  const handleSignOut = () => {
+    router.push('/registration');
+  };
 
   const navigation = useNavigation()
   const router = useRouter()
@@ -60,9 +63,6 @@ const SettingsScreen: React.FC = () => {
     updatedSettings[sectionIndex].options[optionIndex].checked =
       !updatedSettings[sectionIndex].options[optionIndex].checked;
     setSettings(updatedSettings);
-  };
-  const handleSignOut = () => {
-    router.replace('/registration');
   };
 
   if (!fontsLoaded) {
@@ -111,7 +111,7 @@ const SettingsScreen: React.FC = () => {
       </View>
         {/* Button */}
       <View>
-          <TouchableOpacity onPress={() => {router.navigate('/settings/payment')}} style={styles.changeTarifButton}>
+          <TouchableOpacity onPress={() => {router.navigate('/screens/payment')}} style={styles.changeTarifButton}>
             <Text style={styles.changeTarifText}>Change tariff</Text>
           </TouchableOpacity>
         </View>
@@ -129,7 +129,7 @@ const SettingsScreen: React.FC = () => {
         <PasswordField />
         {/* Buttons */}
         <View>
-          <TouchableOpacity style={styles.signOutButton}>
+          <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
             <Text style={styles.signOutText}>Sign out</Text>
           </TouchableOpacity>
           <TouchableOpacity>

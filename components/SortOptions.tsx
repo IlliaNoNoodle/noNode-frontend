@@ -29,7 +29,14 @@ export const SortOptions: React.FC<SortOptionsProps> = ({ allAudios, setFiltered
     if (selectedId === '1') {
       setFilteredAudios(allAudios.filter(audio => audio));
     } else if (selectedId === '2') {
+<<<<<<< HEAD
       setFilteredAudios(allAudios.filter(audio => audio));
+=======
+      const sortedByDate = [...allAudios].sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setFilteredAudios(sortedByDate);
+>>>>>>> dev
     } else if (selectedId === '3') {
       setFilteredAudios(allAudios.filter(audio => audio.amountOfParticipants > 2));
     } else if (selectedId === '4') {
@@ -76,10 +83,22 @@ export const SortOptions: React.FC<SortOptionsProps> = ({ allAudios, setFiltered
 
 const styles = StyleSheet.create({
   container: {
+<<<<<<< HEAD
     display: 'flex',
     alignSelf: 'flex-end', 
     width: 204,
     padding: 16,
+=======
+    position: 'absolute',
+    backgroundColor: '#FFFFFF',
+    top: '100%',
+    zIndex: 2,
+    borderRadius: 8,
+    display: 'flex',
+    alignSelf: 'flex-end', 
+    width: 204,
+    paddingVertical: 16,
+>>>>>>> dev
   },
   header: {
     fontSize: 16,
@@ -112,4 +131,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> dev

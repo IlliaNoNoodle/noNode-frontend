@@ -69,6 +69,7 @@ export default function TabLayout() {
 
   return (
     <Provider>
+    <Provider>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
@@ -110,7 +111,15 @@ export default function TabLayout() {
           presentation: 'modal' 
         }} />
       </Stack>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="registration" options={{ 
+          headerShown: false,
+          presentation: 'modal' 
+        }} />
+      </Stack>
     </Tabs>
+    </Provider>
     </Provider>
   );
 }
