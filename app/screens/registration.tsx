@@ -9,7 +9,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { CheckBox } from "@/components";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 
 export default function ProfileScreen(props: { onSignIn: () => void }) {
 
@@ -24,6 +24,7 @@ export default function ProfileScreen(props: { onSignIn: () => void }) {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen name="termsConditions" options={{ headerShown: false }} />
       {/* Logo Section */}
       <View style={styles.logoContainer}>
         <View style={styles.logo}>
