@@ -6,30 +6,58 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Alert,
   useColorScheme,
 } from "react-native";
-import { CheckBox } from "@/components";
 import { useRouter } from "expo-router";
+import { signInUser, signUpUser } from "@/services/auth";
 
-export default function ProfileScreen(props: { onSignIn: () => void }) {
-
-  const router = useRouter() 
-
+export default function ProfileScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
   const styles = getStyles(isDarkMode);
 
+  const [showSignUp, setShowSignUp] = useState(false); // Toggle for Sign-Up/Sign-In
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
+
+
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields.');
+      return;
+    }
+  
+    const success = await signInUser(email, password);
+    if (success) {
+      Alert.alert('Success', 'Signed in successfully.');
+      router.push('/'); // Navigate to the home screen
+    }
+  };
+  const handleSignUp = async () => {
+    console.log(router)
+    if (!email || !password) {
+      Alert.alert("Error", "Please fill in all fields.");
+      return;
+    }
+  
+    const success = await signUpUser(email, password);
+    if (success) {
+      Alert.alert("Success", "Account created successfully.");// Navigate to the home screen
+    }
+  };
 
   return (
     <View style={styles.container}>
       {/* Logo Section */}
       <View style={styles.logoContainer}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>Logo</Text>
-        </View>
-        <Text style={styles.title}>Welcome to X</Text>
+        <Image
+          source={{ uri: "https://your-logo-url.com/logo.png" }}
+          style={styles.logo}
+        />
+        <Text style={styles.title}>Welcome to Toxic Truth</Text>
       </View>
 
       {/* Google Sign-In */}
@@ -40,7 +68,9 @@ export default function ProfileScreen(props: { onSignIn: () => void }) {
           }}
           style={styles.googleIcon}
         />
-        <Text style={styles.googleButtonText}>Sign in with Google</Text>
+        <Text style={styles.googleButtonText}>
+          {showSignUp ? "Sign up with Google" : "Sign in with Google"}
+        </Text>
       </TouchableOpacity>
 
       {/* Divider */}
@@ -57,15 +87,21 @@ export default function ProfileScreen(props: { onSignIn: () => void }) {
         <TextInput
           style={styles.input}
           placeholder="Enter your email"
+          value={email}
+          onChangeText={setEmail}
           placeholderTextColor="#B0BEC5"
         />
 
         {/* Password Input */}
-        <Text style={styles.label}>Password</Text>
+        <Text style={styles.label}>
+          {showSignUp ? "Create Password" : "Password"}
+        </Text>
         <View>
           <TextInput
             style={styles.input}
-            placeholder="Enter your password"
+            placeholder={showSignUp ? "Create your password" : "Enter your password"}
+            value={password}
+            onChangeText={setPassword}
             placeholderTextColor="#B0BEC5"
             secureTextEntry={!showPassword}
           />
@@ -80,27 +116,31 @@ export default function ProfileScreen(props: { onSignIn: () => void }) {
         </View>
       </View>
 
-      {/* Terms and Conditions */}
-      <View style={styles.checkboxContainer}>
-        <CheckBox
-          label="I accepted all Terms and Conditions."
-          checked={isChecked}
-          onToggle={() => {setIsChecked(!isChecked)}}
-        />
-      </View>
-
-      {/* Sign-In Button */}
-      <TouchableOpacity style={styles.signInButton} onPress={() => {router.push('/')}}>
-        <Text style={styles.signInButtonText}>Sign in</Text>
+      {/* Sign-In or Sign-Up Button */}
+      <TouchableOpacity
+        style={styles.signInButton}
+        onPress={showSignUp ? handleSignUp : handleSignIn}
+      >
+        <Text style={styles.signInButtonText}>
+          {showSignUp ? "Sign up" : "Sign in"}
+        </Text>
       </TouchableOpacity>
 
       {/* Footer */}
       <Text style={styles.footerText}>
-        Already have an account? <Text style={styles.footerLink}>Sign in</Text>
+        {showSignUp
+          ? "Already have an account? "
+          : "Don't have an account? "}
+        <Text
+          style={styles.footerLink}
+          onPress={() => setShowSignUp(!showSignUp)}
+        >
+          {showSignUp ? "Sign in" : "Sign up"}
+        </Text>
       </Text>
     </View>
   );
-};
+}
 
 const getStyles = (isDarkMode: boolean) =>
   StyleSheet.create({
@@ -112,25 +152,18 @@ const getStyles = (isDarkMode: boolean) =>
     },
     logoContainer: {
       alignItems: "center",
+      marginBottom: 20,
     },
     logo: {
-      width: 120,
-      height: 120,
-      borderRadius: 100,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
       backgroundColor: "#E0E0E0",
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    logoText: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: "#000000",
     },
     title: {
-      fontSize: 20,
-      fontWeight: "600",
-      marginTop: 15,
-      marginBottom: 42,
+      fontSize: 24,
+      fontWeight: "bold",
+      marginTop: 20,
     },
     googleButton: {
       flexDirection: "row",
@@ -138,18 +171,14 @@ const getStyles = (isDarkMode: boolean) =>
       backgroundColor: "#FFFFFF",
       borderWidth: 1,
       borderColor: "#E0E0E0",
-      paddingVertical: 15,
-      paddingHorizontal: 0,
+      padding: 15,
       borderRadius: 10,
       marginBottom: 20,
-      justifyContent: "center",
-      gap: 12,
-      textAlign: "center",
     },
     googleIcon: {
       width: 20,
       height: 20,
-      // marginRight: 10,
+      marginRight: 10,
     },
     googleButtonText: {
       fontSize: 16,
@@ -171,7 +200,6 @@ const getStyles = (isDarkMode: boolean) =>
     },
     inputContainer: {
       marginBottom: 20,
-
     },
     label: {
       fontSize: 14,
@@ -180,7 +208,6 @@ const getStyles = (isDarkMode: boolean) =>
       marginBottom: 5,
     },
     input: {
-      // backgroundColor: "#F7F7F7",
       borderWidth: 1,
       borderColor: "#E0E0E0",
       padding: 15,
@@ -192,28 +219,15 @@ const getStyles = (isDarkMode: boolean) =>
     eyeIcon: {
       width: 20,
       height: 20,
-      tintColor: "#92939E",
       position: "absolute",
       right: 10,
-    },
-    checkboxContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 20,
-    },
-    checkbox: {
-      marginRight: 10,
-    },
-    checkboxText: {
-      fontSize: 14,
-      color: "#92939E",
+      top: 10,
     },
     signInButton: {
       backgroundColor: "#4A90E2",
       padding: 15,
       borderRadius: 8,
       alignItems: "center",
-      marginBottom: 20,
     },
     signInButtonText: {
       color: "#FFFFFF",
@@ -224,6 +238,7 @@ const getStyles = (isDarkMode: boolean) =>
       textAlign: "center",
       fontSize: 14,
       color: "#92939E",
+      marginTop: 20,
     },
     footerLink: {
       color: "#4A90E2",

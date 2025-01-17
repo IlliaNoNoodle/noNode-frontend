@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { atom } from 'jotai';
 
@@ -28,27 +29,28 @@ export const isAuthenticatedAtom = atom(false);
 
 
 export const checkAuthAtom = atom(
-  (get) => get(isAuthenticatedAtom),
-  async (_get, set) => {
-    try {
-      const userId = localStorage.getItem('userId');
-      if (!userId) {
-        set(isAuthenticatedAtom, false);
-        return;
+    null,
+    async (_get, set) => {
+      try {
+        const token = await AsyncStorage.getItem('access_token'); // Отримуємо токен
+        if (!token) {
+          set(isAuthenticatedAtom, false); // Якщо токена немає, користувач не авторизований
+          return;
+        }
+  
+        // Перевіряємо токен на сервері (опціонально)
+        const response = await axios.get('http://localhost:8080/auth/verify', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+  
+        if (response.status === 200) {
+          set(isAuthenticatedAtom, true); // Авторизований
+        } else {
+          set(isAuthenticatedAtom, false); // Не авторизований
+        }
+      } catch (error) {
+        console.error('Error checking authentication:', error);
+        set(isAuthenticatedAtom, false); // Помилка = не авторизований
       }
-
-      const response = await axios.get(`http://localhost:8080/users/${userId}/id`,{
-        withCredentials: true,
-      });
-
-      if (response.status === 200) {
-        set(isAuthenticatedAtom, true);
-      } else {
-        set(isAuthenticatedAtom, false);
-      }
-    } catch (error) {
-      console.error('Error checking authentication:', error);
-      set(isAuthenticatedAtom, false);
     }
-  }
-);
+  );

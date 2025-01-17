@@ -10,6 +10,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { Link, useNavigation, useRouter } from 'expo-router';
 import PasswordField from '../../components/PasswordField';
 import { useFonts } from 'expo-font';
+import { signOutUser } from '@/services/auth';
 
 type Option = {
   id: string;
@@ -50,7 +51,7 @@ const SettingsScreen: React.FC = () => {
     'NotoSans-SemiBold': require('../../assets/fonts/NotoSans-SemiBold.ttf'),
   });
   const handleSignOut = () => {
-    router.push('/registration');
+    signOutUser(router); 
   };
 
   const navigation = useNavigation()
