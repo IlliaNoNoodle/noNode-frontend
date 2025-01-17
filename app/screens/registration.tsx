@@ -9,7 +9,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { CheckBox } from "@/components";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 
 export default function ProfileScreen(props: { onSignIn: () => void }) {
 
@@ -24,12 +24,13 @@ export default function ProfileScreen(props: { onSignIn: () => void }) {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen name="termsConditions" options={{ headerShown: false }} />
       {/* Logo Section */}
       <View style={styles.logoContainer}>
         <View style={styles.logo}>
           <Text style={styles.logoText}>Logo</Text>
         </View>
-        <Text style={styles.title}>Welcome to X</Text>
+        <Text style={styles.title}>Welcome to Toxic Truth</Text>
       </View>
 
       {/* Google Sign-In */}
@@ -61,7 +62,7 @@ export default function ProfileScreen(props: { onSignIn: () => void }) {
         />
 
         {/* Password Input */}
-        <Text style={styles.label}>Password</Text>
+        <Text style={styles.label}>Create password</Text>
         <View>
           <TextInput
             style={styles.input}
@@ -96,7 +97,7 @@ export default function ProfileScreen(props: { onSignIn: () => void }) {
 
       {/* Footer */}
       <Text style={styles.footerText}>
-        Already have an account? <Text style={styles.footerLink}>Sign in</Text>
+        Already have an account? <Text style={styles.footerLink}>Sign up</Text>
       </Text>
     </View>
   );

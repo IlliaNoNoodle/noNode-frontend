@@ -500,6 +500,22 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
   },
+  dropdown: {
+    position: "absolute",
+    top: 30,
+    right: 0,
+    backgroundColor: "white",
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 100,
+  },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  }
 });
 
 export default AnalysisLibraryScreen;

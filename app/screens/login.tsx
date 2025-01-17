@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   View,
@@ -30,7 +29,7 @@ export default function ProfileScreen(props: { onSignIn: () => void }) {
         <View style={styles.logo}>
           <Text style={styles.logoText}>Logo</Text>
         </View>
-        <Text style={styles.title}>Welcome to X</Text>
+        <Text style={styles.title}>Welcome to Toxic Truth</Text>
       </View>
 
       {/* Google Sign-In */}
@@ -107,7 +106,7 @@ const getStyles = (isDarkMode: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: isDarkMode ? "#1C1C1E" : "#FFFFFF",
       padding: 20,
       justifyContent: "center",
     },
