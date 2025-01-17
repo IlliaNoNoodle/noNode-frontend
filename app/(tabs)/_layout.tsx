@@ -52,16 +52,14 @@ export default function TabLayout() {
     );
   };
 
-  // IF YOU WANT TO SEE PRIVACY POLICY ENABLE THIS
-
-  // if (!hasAcceptedPrivacyPolicy) {
-  //   return (
-  //     <PrivacyPolicy 
-  //       onAccept={handlePrivacyPolicyAccept}
-  //       onDecline={handlePrivacyPolicyDecline}
-  //     />
-  //   );
-  // }
+  if (!hasAcceptedPrivacyPolicy) {
+    return (
+      <PrivacyPolicy 
+        onAccept={handlePrivacyPolicyAccept}
+        onDecline={handlePrivacyPolicyDecline}
+      />
+    );
+  }
 
 
   
