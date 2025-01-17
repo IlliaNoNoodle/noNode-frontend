@@ -52,16 +52,19 @@ export default function TabLayout() {
     );
   };
 
-  // If privacy policy hasn't been accepted, show privacy policy screen
-  if (!hasAcceptedPrivacyPolicy) {
-    return (
-      <PrivacyPolicy 
-        onAccept={handlePrivacyPolicyAccept}
-        onDecline={handlePrivacyPolicyDecline}
-      />
-    );
-  }
+  // IF YOU WANT TO SEE PRIVACY POLICY ENABLE THIS
 
+  // if (!hasAcceptedPrivacyPolicy) {
+  //   return (
+  //     <PrivacyPolicy 
+  //       onAccept={handlePrivacyPolicyAccept}
+  //       onDecline={handlePrivacyPolicyDecline}
+  //     />
+  //   );
+  // }
+
+
+  
   // If not authenticated, show registration
   if (!isAuthenticated) {
     return <ProfileScreen onSignIn={() => setIsAuthenticated(true)} />;
