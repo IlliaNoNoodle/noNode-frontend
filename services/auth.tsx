@@ -10,6 +10,8 @@ const isValidEmail = (email: string) => {
 
 // Sign-In User
 export const signInUser = async (email: string, password: string) => {
+  email = email.trim();
+  
   if (!isValidEmail(email)) {
     Alert.alert('Error', 'Please enter a valid email address.');
     return false;
@@ -44,6 +46,9 @@ export const signInUser = async (email: string, password: string) => {
 
 // Sign-Up User
 export const signUpUser = async (email: string, password: string) => {
+  // Trim spaces from email
+  email = email.trim();
+
   if (!isValidEmail(email)) {
     Alert.alert('Error', 'Please enter a valid email address.');
     return false;
