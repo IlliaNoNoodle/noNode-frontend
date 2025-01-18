@@ -12,6 +12,8 @@ import {
   BackHandler,
   Alert,
 } from "react-native";
+import { useAtom } from 'jotai';
+import { isAuthenticatedAtom } from '../../app/store';
 import { Stack, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Polygon } from "react-native-svg";
@@ -31,6 +33,7 @@ const TermsConditions: React.FC<PrivacyPolicyProps> = ({
   const router = useRouter();
 
   const [isScrolledToEnd, setIsScrolledToEnd] = useState(false);
+  const [, setIsAuthenticated] = useAtom(isAuthenticatedAtom);
 
   const handleScroll = useCallback((event) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
@@ -40,8 +43,9 @@ const TermsConditions: React.FC<PrivacyPolicyProps> = ({
   }, []);
 
   const handleAccept = () => {
-    onAccept && onAccept();
+    setIsAuthenticated(true);
     router.replace("/screens/registration");
+    onAccept && onAccept();
   };
 
   const handleDecline = () => {

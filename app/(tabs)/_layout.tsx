@@ -2,7 +2,8 @@ import { Tabs, Stack } from 'expo-router';
 import { Provider } from 'jotai';
 import React, { useState, useEffect } from 'react';
 import { Platform, useColorScheme, Alert, Linking } from 'react-native';
-
+import { useAtom } from 'jotai';
+import { isAuthenticatedAtom } from '../store';
 import ProfileScreen from '../screens/registration';
 import PrivacyPolicy from '../screens/privacyPolicy';
 import Colors from '@/constants/Colors';
@@ -10,9 +11,8 @@ import { IconSymbol } from '@/components';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [hasAcceptedPrivacyPolicy, setHasAcceptedPrivacyPolicy] = useState(false);
-
+  const [isAuthenticated] = useAtom(isAuthenticatedAtom);
   // Check for first-time app launch or privacy policy acceptance
   useEffect(() => {
     // In a real app, you'd use AsyncStorage or similar to persist this
@@ -51,8 +51,7 @@ export default function TabLayout() {
       ]
     );
   };
-
-  if (!hasAcceptedPrivacyPolicy) {
+  if (!isAuthenticated) {
     return (
       <PrivacyPolicy 
         onAccept={handlePrivacyPolicyAccept}

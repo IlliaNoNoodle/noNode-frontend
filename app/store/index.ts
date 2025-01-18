@@ -21,7 +21,6 @@ export interface AudioItem {
 
 export const audios = atom<AudioItem[]>([]);
 export const filteredAudiosAtom = atom<AudioItem[]>([]);
-
 export const isAuthenticatedAtom = atom(false);
 
 export const checkAuthAtom = atom(
