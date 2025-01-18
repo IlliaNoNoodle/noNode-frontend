@@ -52,16 +52,16 @@ export default function RecordAudioScreen() {
 
 
   const startRecording = async () => {
-    // await checkAuth(); 
+    await checkAuth(); 
 
-    // if (!isAuthenticated) {
-    //   Alert.alert(
-    //     'Authentication Required',
-    //     'You must be logged in to record audio.'
-    //   );
-    //   router.push('/screens/registration'); 
-    //   return;
-    // }
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Authentication Required',
+        'You must be logged in to record audio.'
+      );
+      router.push('/screens/registration'); 
+      return;
+    }
 
     try {
       await Audio.requestPermissionsAsync();
