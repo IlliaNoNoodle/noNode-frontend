@@ -44,7 +44,7 @@ export const uploadAudioToAssemblyAI = async (audioUri: string): Promise<string>
         headers: { authorization: ASSEMBLY_API_KEY },
       }
     );
-
+    console.log(transcriptionResponse.data, "transcriptionResponse")
     return transcriptionResponse.data.id;
   } catch (error) {
     console.error('Error uploading or transcribing audio:', error);

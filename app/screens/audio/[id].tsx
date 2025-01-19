@@ -58,12 +58,6 @@ console.log('ID from useLocalSearchParams:', id);
       tone: 'Frustrated, repeatedly cutting off the employee; borderline aggressive.',
       observations: 'Could escalate to a formal HR issue if this style of communication persists.',
     },
-    {
-      person: 'Person 2',
-      comments: 'Expressed feeling singled out and unsupported. Claimed the manager’s expectations are unclear.',
-      tone: 'Defensive and visibly upset; raised their voice in response to the manager’s criticisms.',
-      observations: 'Potential conflict with the manager could impact team morale if not resolved.',
-    },
   ];
 
   const recording = allAudios.find(audio => audio.id === Number(id));

@@ -13,15 +13,24 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.daniilklymchuk.nonnoode"
     },
     "android": {
-      "package": "com.yourcompany.yourapp",
+      "package": "com.daniilklymchuk.nonnoode",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [ "com.android.vending.BILLING", "RECORD_AUDIO", "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE"],
+      "buildType": "apk"
     },
     "web": {
       "bundler": "metro",
@@ -29,19 +38,20 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
+      "googleClientIdWeb": "978113528745-q04lamvvi7pl2nv17627j172uc2fd8fc.apps.googleusercontent.com",
       "router": {
         "origin": false
       },
       "eas": {
-        "projectId": "922ef916-1915-4300-bfa5-71622a2baf66"
+        "projectId": "6c7f588e-03f5-42c4-bfe2-a42a29260975"
       }
     },
-    "owner": "illia234567898765"
+    "owner": "daniilklymchuk"
   }
 }

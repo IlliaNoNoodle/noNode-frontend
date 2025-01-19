@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 
 interface SaveRecordingModalProps {
@@ -14,6 +15,7 @@ interface SaveRecordingModalProps {
   onSave: () => void;
   recordingName: string;
   setRecordingName: (name: string) => void;
+  isSaving: boolean;
 }
 
 const SaveRecordingModal: React.FC<SaveRecordingModalProps> = ({
@@ -22,6 +24,7 @@ const SaveRecordingModal: React.FC<SaveRecordingModalProps> = ({
   onSave,
   recordingName,
   setRecordingName,
+  isSaving,
 }) => {
   return (
     <Modal
@@ -38,13 +41,20 @@ const SaveRecordingModal: React.FC<SaveRecordingModalProps> = ({
             placeholder="Recording Name"
             value={recordingName}
             onChangeText={setRecordingName}
+            editable={!isSaving}
           />
           <View style={styles.modalButtons}>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.cancelButton}>Cancel</Text>
+            <TouchableOpacity onPress={onClose} disabled={isSaving}>
+              <Text style={[styles.cancelButton, isSaving && styles.disabledButton]}>
+                Cancel
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={onSave}>
-              <Text style={styles.saveButtonText}>Save</Text>
+            <TouchableOpacity onPress={onSave} disabled={isSaving}>
+              {isSaving ? (
+                <ActivityIndicator color="green" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -98,6 +108,9 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: 'green',
     fontSize: 16,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });
 

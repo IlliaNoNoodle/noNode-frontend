@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,10 @@ import {
   useColorScheme,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { signInUser, signUpUser } from "@/services/auth";
+import { handleGoogleSignIn, signInUser, signUpUser, useGoogleAuth } from "@/services/auth";
+import { useAtom } from 'jotai';
+import { privacyPolicyAcceptedAtom, termsConditionsAcceptedAtom, signUpFormDataAtom, setSignUpFormDataAtom } from '../store/index';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -23,6 +26,40 @@ export default function ProfileScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const [privacyPolicyAccepted] = useAtom(privacyPolicyAcceptedAtom);
+  const [termsAccepted] = useAtom(termsConditionsAcceptedAtom);
+  const [formData] = useAtom(signUpFormDataAtom);
+  const [, setFormData] = useAtom(setSignUpFormDataAtom);
+
+
+  // Store form data in AsyncStorage to persist between navigations
+  useEffect(() => {
+    const loadSavedData = async () => {
+      try {
+        const savedEmail = await AsyncStorage.getItem('tempEmail');
+        const savedPassword = await AsyncStorage.getItem('tempPassword');
+        if (savedEmail && savedPassword) {
+          setEmail(savedEmail);
+          setPassword(savedPassword);
+          setShowSignUp(true);
+        }
+      } catch (error) {
+        console.error('Error loading saved data:', error);
+      }
+    };
+
+    loadSavedData();
+  }, []);
+  const { handleGoogleSignIn } = useGoogleAuth();
+
+  // Load saved form data when returning from policies
+  useEffect(() => {
+    if (privacyPolicyAccepted && termsAccepted && formData.email && formData.password) {
+      setEmail(formData.email);
+      setPassword(formData.password);
+      setShowSignUp(true);
+    }
+  }, [privacyPolicyAccepted, termsAccepted]);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -37,15 +74,32 @@ export default function ProfileScreen() {
     }
   };
   const handleSignUp = async () => {
-    console.log(router)
     if (!email || !password) {
       Alert.alert("Error", "Please fill in all fields.");
       return;
     }
-  
-    const success = await signUpUser(email, password);
-    if (success) {
-      Alert.alert("Success", "Account created successfully.");// Navigate to the home screen
+
+    if (!privacyPolicyAccepted || !termsAccepted) {
+      // Save form data before redirecting
+      setFormData({ email, password });
+      router.replace("/screens/privacyPolicy");
+      return;
+    }
+
+    try {
+      const success = await signUpUser(email, password);
+      if (success) {
+        // Clear form data
+        setFormData({ email: '', password: '' });
+        Alert.alert(
+          "Success", 
+          "Account created successfully.",
+          [{ text: "OK", onPress: () => router.replace("/") }]
+        );
+      }
+    } catch (error) {
+      console.error('Signup error:', error);
+      Alert.alert("Error", "Failed to create account. Please try again.");
     }
   };
 
@@ -53,15 +107,16 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       {/* Logo Section */}
       <View style={styles.logoContainer}>
-        <Image
-          source={{ uri: "https://your-logo-url.com/logo.png" }}
-          style={styles.logo}
-        />
+      <Image 
+              source={require('../../assets/logo.png')} 
+              style={styles.logo}
+              resizeMode="contain" 
+            />
         <Text style={styles.title}>Welcome to Toxic Truth</Text>
       </View>
 
       {/* Google Sign-In */}
-      <TouchableOpacity style={styles.googleButton}>
+      <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn}>
         <Image
           source={{
             uri: "https://kgo.googleusercontent.com/profile_vrt_raw_bytes_1587515358_10512.png",
@@ -118,11 +173,24 @@ export default function ProfileScreen() {
 
       {/* Sign-In or Sign-Up Button */}
       <TouchableOpacity
-        style={styles.signInButton}
+        style={[
+          styles.signInButton,
+          (showSignUp && (!email || !password || !privacyPolicyAccepted || !termsAccepted)) && 
+          styles.disabledButton
+        ]}
         onPress={showSignUp ? handleSignUp : handleSignIn}
+        disabled={showSignUp && (!email || !password)}
       >
         <Text style={styles.signInButtonText}>
-          {showSignUp ? "Sign up" : "Sign in"}
+          {showSignUp ? (
+            !email || !password ? 
+              "Fill in all fields" :
+              !privacyPolicyAccepted || !termsAccepted ? 
+                "Accept Terms & Privacy Policy" :
+                "Sign up"
+          ) : (
+            "Sign in"
+          )}
         </Text>
       </TouchableOpacity>
 
@@ -155,10 +223,8 @@ const getStyles = (isDarkMode: boolean) =>
       marginBottom: 20,
     },
     logo: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: "#E0E0E0",
+      width: 120,
+      height: 120,
     },
     title: {
       fontSize: 24,
@@ -243,5 +309,8 @@ const getStyles = (isDarkMode: boolean) =>
     footerLink: {
       color: "#4A90E2",
       fontWeight: "600",
+    },
+    disabledButton: {
+      backgroundColor: '#A0A0A0',
     },
   });

@@ -1,14 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
 import { audios } from '../../store';
 
 const TranscriptionScreen = () => {
   const { id } = useLocalSearchParams();
   const [allAudios] = useAtom(audios);
+  const router = useRouter();
 
+  console.log('ID:', id);
+  console.log('All Audios:', allAudios);
+  
   const recording = allAudios.find(audio => audio.id === Number(id));
+  console.log('Found Recording:', recording);
 
   if (!recording) {
     return (
@@ -19,8 +24,11 @@ const TranscriptionScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Text style={styles.backButtonText}>←</Text>
+        </TouchableOpacity>
         <Text style={styles.title}>Transcription</Text>
       </View>
 
@@ -37,13 +45,13 @@ const TranscriptionScreen = () => {
           <View key={index} style={styles.utteranceContainer}>
             <View style={styles.utteranceHeader}>
               <Text style={styles.speaker}>Speaker {utterance.speaker || 'Unknown'}</Text>
-              <Text style={styles.timestamp}>{formatTime(utterance.start)}</Text>
+              <Text style={styles.timestamp}>{formatTime(utterance.timestamp)}</Text>
             </View>
             <Text style={styles.transcriptionText}>{utterance.text}</Text>
           </View>
         ))}
       </ScrollView>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -59,9 +67,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FA',
     padding: 16,
+    marginTop: 30,
   },
   header: {
     marginBottom: 16,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: 16,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#E4E4E7',
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
   },
   title: {
     fontSize: 22,
@@ -113,6 +136,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FF6B6B',
     fontWeight: 'bold',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

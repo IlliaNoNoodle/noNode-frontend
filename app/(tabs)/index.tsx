@@ -18,6 +18,7 @@ import TranscriptionResult, { TranscriptionResult as TranscriptionResultType } f
 import { uploadAudioToAssemblyAI, getTranscriptionResult } from '@/services/assemblyAI';
 import SaveRecordingModal from "@/components/SaveRecordingModal";
 import { useRouter } from 'expo-router'; 
+import { requestPermissions } from "@/services/permission";
 
 const ScreenWidth = Dimensions.get("window").width;
 
@@ -33,6 +34,12 @@ interface ExtendedRecording extends Audio.Recording {
   };
 }
 
+const formatDuration = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
 export default function RecordAudioScreen() {
   const [allAudios, setAllAudios] = useAtom(audios);
   const [recording, setRecording] = useState<ExtendedRecording | null>(null);
@@ -47,11 +54,14 @@ export default function RecordAudioScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [recordingName, setRecordingName] = useState('');
   const [, checkAuth] = useAtom(checkAuthAtom); 
-  const [isAuthenticated, setIsAuthenticated] = useAtom(isAuthenticatedAtom);
   const router = useRouter();
-
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingInterval = useRef<NodeJS.Timeout | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useAtom(isAuthenticatedAtom);
 
   const startRecording = async () => {
+
     await checkAuth(); 
 
     if (!isAuthenticated) {
@@ -63,18 +73,29 @@ export default function RecordAudioScreen() {
       return;
     }
 
+    const hasPermissions = await requestPermissions();
+    if (!hasPermissions) return;
+
     try {
       await Audio.requestPermissionsAsync();
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
       });
 
       setIsRecording(true);
+      setRecordingDuration(0);
 
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
+
+      recordingInterval.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+
       setRecording(recording as ExtendedRecording);
     } catch (err) {
       console.error('Error starting recording:', err);
@@ -84,11 +105,17 @@ export default function RecordAudioScreen() {
   async function stopRecording() {
     try {
       if (recording) {
+        if (recordingInterval.current) {
+          clearInterval(recordingInterval.current);
+          recordingInterval.current = null;
+        }
+
         await recording.stopAndUnloadAsync();
         const uri = recording.getURI();
         setRecording(null);
         setRecordedUri(uri);
         setIsRecording(false);
+        setDuration(recordingDuration);
       }
     } catch (err) {
       console.error("Error stopping recording:", err);
@@ -144,7 +171,10 @@ export default function RecordAudioScreen() {
     date: string;
     id: number;
     duration: number;
+    formattedDuration: string;
     uri: string;
+    size: number;
+    riskScore: number;
     amountOfParticipants: number;
     transcription?: TranscriptionResultType;
   }) => {
@@ -184,36 +214,56 @@ export default function RecordAudioScreen() {
   const saveRecording = async () => {
     try {
       if (!recordedUri) return;
-
+  
+      setIsSaving(true);
+  
       const transcriptionId = await uploadAudioToAssemblyAI(
         recordedUri,
         amountOfParticipants || 2
       );
-
+  
       setStatus("Processing transcription...");
-
+  
       const transcriptionResult = await pollTranscriptionResult(transcriptionId);
       setTranscription(transcriptionResult);
-
+  
+      const fileInfo = await FileSystem.getInfoAsync(recordedUri);
+      const fileSizeInKB = Math.round(fileInfo.size / 1024);
+  
+      const riskScore = Math.floor(Math.random() * 100);
+  
       const currentDate = new Date();
       handleAddAudio({
-        name: `audio number ${allAudios.length + 1}`,
+        name: recordingName || `audio number ${allAudios.length + 1}`,
         date: `${currentDate.getDate()}.${currentDate.getMonth() + 1}.${currentDate.getFullYear()}`,
         id: allAudios.length + 1,
-        duration: duration,
+        duration: recordingDuration,
+        formattedDuration: formatDuration(recordingDuration),
         uri: recordedUri,
+        size: fileSizeInKB,
+        riskScore: riskScore,
         amountOfParticipants: amountOfParticipants,
         transcription: transcriptionResult,
       });
-
+  
       Alert.alert("Recording Saved", "Your recording has been saved.");
       setIsModalVisible(false);
       setRecordingName('');
     } catch (error) {
       console.error("Save Error:", error);
       Alert.alert("Save Error", "Failed to save recording.");
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+      }
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -222,8 +272,9 @@ export default function RecordAudioScreen() {
         <WaveForm
           isRecording={isRecording}
           recording={recording}
+          currentDuration={recordingDuration}
           onDurationUpdate={(newDuration) => {
-            setDuration(newDuration);
+            setDuration(Math.round(newDuration));
           }}
         />
       </View>
@@ -298,6 +349,7 @@ export default function RecordAudioScreen() {
           onSave={saveRecording}
           recordingName={recordingName}
           setRecordingName={setRecordingName}
+          isSaving={isSaving}
         />
     </View>
   );

@@ -1,12 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Image,
+  ScrollView,
 } from "react-native";
 import { MaterialCommunityIcons, Feather, Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import Purchases, { PurchasesPackage, CustomerInfo } from 'react-native-purchases';
 
 type Plan = {
   id: string;
@@ -17,7 +21,27 @@ type Plan = {
 };
 
 export default function PaymentPage() {
+  const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<string>("6_month");
+  const [isLoading, setIsLoading] = useState(false);
+  const [packages, setPackages] = useState<PurchasesPackage[]>([]);
+
+  useEffect(() => {
+    initializePurchases();
+  }, []);
+
+  const initializePurchases = async () => {
+    try {
+      await Purchases.configure({ apiKey: 'app0005d774be' });
+      const offerings = await Purchases.getOfferings();
+      
+      if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
+        setPackages(offerings.current.availablePackages);
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to load subscription options');
+    }
+  };
 
   const plans: Plan[] = [
     {
@@ -43,20 +67,47 @@ export default function PaymentPage() {
     setSelectedPlan(planId);
   };
 
-  const handleContinue = () => {
-    Alert.alert("Selected Plan", `You selected: ${selectedPlan}`);
-    // Redirect to Stripe Checkout logic will go here
+  const handleContinue = async () => {
+    try {
+      setIsLoading(true);
+      const selectedPackage = packages.find(pkg => pkg.identifier === selectedPlan);
+      
+      if (!selectedPackage) {
+        throw new Error('Selected package not found');
+      }
+
+      const { customerInfo }: { customerInfo: CustomerInfo } = await Purchases.purchasePackage(selectedPackage);
+      
+      if (customerInfo.entitlements.active['premium']) {
+        Alert.alert('Success', 'Purchase completed!');
+        router.back();
+      }
+    } catch (error: any) {
+      if (!error.userCancelled) {
+        Alert.alert('Error', error?.message || 'Unable to process payment');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    router.back();
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       {/* Header Section */}
       <View style={styles.headerSection}>
         <View style={styles.headerContent}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoText}>Logo</Text>
+          <View>
+            <Image 
+              source={require('../../assets/logo.png')} 
+              style={styles.logo}
+              resizeMode="contain" 
+            />
           </View>
-          <TouchableOpacity style={styles.closeButton}>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Text style={styles.closeText}>×</Text>
           </TouchableOpacity>
         </View>
@@ -128,17 +179,25 @@ export default function PaymentPage() {
       </Text>
 
       {/* Continue Button */}
-      <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-        <Text style={styles.continueButtonText}>Continue</Text>
+      <TouchableOpacity 
+        style={[
+          styles.continueButton,
+          isLoading && styles.disabledButton
+        ]} 
+        onPress={handleContinue}
+        disabled={isLoading}
+      >
+        <Text style={styles.continueButtonText}>
+          {isLoading ? "Processing..." : "Continue"}
+        </Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: 40,
     padding: 20,
     backgroundColor: "#fff",
   },
@@ -151,13 +210,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     position: "relative",
   },
-  logoContainer: {
-    backgroundColor: "#E0E0E0",
-    width: 60,
-    height: 60,
+  logo: {
+    width: 80,
+    height: 80,
     borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
   },
   logoText: {
     fontSize: 14,
@@ -266,5 +322,9 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  disabledButton: {
+    backgroundColor: "#A5B4FF",
+    opacity: 0.7,
   },
 });

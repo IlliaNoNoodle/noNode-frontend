@@ -8,6 +8,7 @@ import {
   FlatList,
   TouchableOpacity,
   Modal,
+  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { WaveFormBar } from "../../components/WaveFormBar";
@@ -17,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SortOptions } from "../../components/SortOptions";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
+import { handleTranscriptionSummary } from "@/services/transcription";
 
 const AnalysisLibraryScreen = () => {
   const [allAudios, setAllAudios] = useAtom(audios);
@@ -152,7 +154,11 @@ const AnalysisLibraryScreen = () => {
   };
 
   const renderRecording = ({ item }: { item: AudioItem }) => (
-    <TouchableOpacity onPress={() => router.push(`/screens/audio/${item.id}`)}>
+    <TouchableOpacity onPress={() => 
+      {handleTranscriptionSummary(item.id, allAudios);
+        console.log(item, "item")
+      router.push(`/screens/audio/${item.id}`)
+      }}>
       <LinearGradient
         colors={["#4F6DFF", "#C0CBFF"]}
         start={{ x: 0, y: 0 }}
@@ -203,7 +209,7 @@ const AnalysisLibraryScreen = () => {
             )}
           </View>
           <Text style={styles.recordingDetails}>
-            {item.date} | {item.amountOfParticipants}
+              {item.date} | {item.size} kB | {item.riskScore} (High Risk)
           </Text>
           <View style={styles.waveformContainer}>
             <WaveFormBar isPlaying={isSoundPlaying} />
